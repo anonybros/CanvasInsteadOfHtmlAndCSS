@@ -10,80 +10,200 @@
       <script src="//html5shiv.googlecode.com/svn/trunk/html5.js" type="text/javascript"></script>
     <![endif]-->
   <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous"></script>
+  <style>
+    #main {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+  </style>
 </head>
 
 <body>
   <canvas id="main" width="1000" height="1000"></canvas>
   <script>
+    function WithinBox(x, y, xStart, yStart, xEnd, yEnd) {
+      if (x >= xStart && x <= xEnd) {
+        if (y >= yStart && y <= yEnd) {
+          return true;
+        }
+        return false;
+      }
+    }
+
+    function CheckBox() {
+      this.x = 0;
+      this.y = 0;
+      this.checked = false;
+      this.radius = 0;
+
+      this.Render = function (context) {
+        this.Clear(context);
+        context.strokeRect(this.x, this.y, this.radius * 2, this.radius * 2);
+        if (this.checked) {
+          context.beginPath();
+          context.moveTo(this.x + (this.radius * 0.05), this.y + this.radius - (this.radius * 0.05));
+          context.lineTo(this.x + this.radius, this.y + this.radius + (this.radius * 0.9));
+          context.lineTo(this.x + this.radius * 2 - (this.radius * 0.05), this.y + (this.radius * 0.05));
+          context.stroke();
+          context.closePath();
+        }
+      };
+
+      this.Clear = function (context) {
+        context.clearRect(this.x, this.y, this.radius * 2, this.radius * 2);
+      }
+
+      this.HandleClick = function (x, y) {
+        if (WithinBox(x, y, this.x, this.y, this.x + this.radius * 2, this.y + this.radius * 2)) {
+          this.checked = !this.checked;
+        }
+      };
+    }
+
     var canvas;
     var context;
 
-    var rectangle = { top: 45, bottom: 60 };
+    function Cursor() {
+      this.x = 0;
+      this.y = 0;
+      this.height = 0;
 
-    function Clear() {
-      context.clearRect(rectangle.top - 50, rectangle.top - 50, rectangle.bottom + 100, rectangle.bottom + 100);
-    }
+      var width = 1;
 
-    function DrawRectangleEmpty() {
-      Clear();
-      context.strokeRect(rectangle.top, rectangle.top, rectangle.bottom, rectangle.bottom);
-    }
-
-    function DrawRectangleChecked() {
-      DrawRectangleEmpty();
-      context.beginPath();
-      context.moveTo(30, 60);
-      context.lineTo(75, 100);
-      context.lineTo(115, 25);
-      context.stroke();
-      context.closePath();
-    }
-
-    var checked = false;
-
-    function DrawBasedOnChecked()
-    {
-      if(checked)
-      {
-        DrawRectangleChecked();
+      this.Render = function (context) {
+        this.Clear(context);
+        context.fillRect(this.x, this.y, width, this.height);
       }
-      else
-      {
-        DrawRectangleEmpty();
+
+      this.Clear = function (context) {
+        context.clearRect(this.x, this.y, width, this.height);
       }
     }
 
-    var text = "";
+    var CursorDisplay = false;
 
-    function DrawText()
-    {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.font = '20px serif';
-      context.fillText(text, 50, 50);
+    function TextBox() {
+      this.x = 0;
+      this.y = 0;
+      this.width = 0;
+      this.height = 0;
+      this.text = "";
+      this.RenderCursor = false;
+
+      this.Render = function (context) {
+        this.Clear(context);
+        context.strokeRect(this.x, this.y, this.width, this.height);
+
+        var c = new Cursor();
+        var width = context.measureText(this.text).width;
+        c.x = (this.x + (this.width * 0.025)) + width;
+        c.y = this.y + (this.height * 0.05);
+        c.height = this.height - (this.height * 0.1);
+
+        if (this.RenderCursor && CursorDisplay) {
+          c.Render(context);
+        }
+        else {
+          c.Clear(context);
+        }
+
+        if (this.text) {
+          context.font = (this.height + (this.height * 0.20)) + 'px serif';
+          context.fillText(this.text, this.x, this.y + this.height - (this.height * 0.1));
+        }
+      };
+
+      this.Clear = function (context) {
+        context.clearRect(this.x, this.y, this.width, this.height);
+      }
+
+      this.HandleKeyDown = function (key) {
+        if (!this.RenderCursor) {
+          return;
+        }
+        if (key == "Backspace") {
+          this.text = this.text.slice(0, -1);
+        }
+        else if (key == "Shift") {
+          //pass
+        }
+        else if (key == "Enter") {
+          //pass
+        }
+        else {
+          this.text += key;
+        }
+      }
+
+      this.HandleClick = function (x, y) {
+        if (WithinBox(x, y, this.x, this.y, this.x + this.width, this.y + this.height)) {
+          this.RenderCursor = true;
+        }
+        else {
+          this.RenderCursor = false;
+        }
+      };
     }
 
     $(function () {
       $canvas = $('#main');
-      $(document).keydown(function (e) {
-        var k = e.key;
-        if(k == "Backspace")
-        {
-          text = text.slice(0, -1);
-        }
-        else
-        {
-          text += k;
-        }
-        DrawText();
-        console.log(text);
-      });
       canvas = $canvas[0];
       context = canvas.getContext('2d');
-      DrawBasedOnChecked();
+
+      $(document).keydown(function (e) {
+        e.preventDefault();
+        HandleKeyDowns(e.key);
+      });
+
+      $canvas.click(function (e) {
+        //console.log(e.pageX + ' , ' + e.pageY);
+        HandleClicks(e.pageX, e.pageY);
+      });
+
+      var b = new CheckBox();
+      b.x = 25;
+      b.y = 25;
+      b.radius = 75;
+      b.checked = true;
+      b.Render(context);
+
+      var b2 = new CheckBox();
+      b2.x = 500;
+      b2.y = 25;
+      b2.radius = 50;
+      b2.checked = false;
+      b2.Render(context);
+
+      var t = new TextBox();
+      t.x = 250;
+      t.y = 25;
+      t.height = 100;
+      t.width = t.height * 4;
+      t.Render(context);
+
+      setInterval(function () {
+        CursorDisplay = !CursorDisplay;
+        t.Render(context);
+      }, 500);
+
+      function HandleClicks(x, y) {
+        b.HandleClick(x, y);
+        b.Render(context);
+        b2.HandleClick(x, y);
+        b2.Render(context);
+        t.HandleClick(x, y);
+        t.Render(context);
+      }
+
+      function HandleKeyDowns(key) {
+        t.HandleKeyDown(key);
+        t.Render(context);
+      }
 
       //c.width = document.width //.clientWidth; //document.width is obsolete
       //c.height = document.height //.clientHeight; //document.height is obsolete
-    })
+    });
   </script>
 </body>
 
