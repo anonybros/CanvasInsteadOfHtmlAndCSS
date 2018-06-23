@@ -53,29 +53,16 @@
       }
     }
 
-    var text = "";
-
-    function DrawText()
-    {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.font = '20px serif';
-      context.fillText(text, 50, 50);
-    }
-
     $(function () {
       $canvas = $('#main');
-      $(document).keydown(function (e) {
-        var k = e.key;
-        if(k == "Backspace")
-        {
-          text = text.slice(0, -1);
+      $canvas.click(function (e) {
+        console.log(e.pageX + ' , ' + e.pageY);
+        if (e.pageX >= rectangle.top && e.pageX <= rectangle.bottom + rectangle.top) {
+          if (e.pageY >= rectangle.top && e.pageY <= rectangle.bottom + rectangle.top) {
+            checked = !checked;
+            DrawBasedOnChecked();
+          }
         }
-        else
-        {
-          text += k;
-        }
-        DrawText();
-        console.log(text);
       });
       canvas = $canvas[0];
       context = canvas.getContext('2d');
@@ -83,6 +70,8 @@
 
       //c.width = document.width //.clientWidth; //document.width is obsolete
       //c.height = document.height //.clientHeight; //document.height is obsolete
+      //ctx.font = '150px serif';
+      //ctx.fillText('I love you, mi esposa', 10, 500);
     })
   </script>
 </body>
