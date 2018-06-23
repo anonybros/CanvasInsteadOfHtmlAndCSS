@@ -99,19 +99,15 @@
       this.AcceptInput = false;
       this.CursorPosition = 0;
 
-      this.MoveCursorLeft = function()
-      {
+      this.MoveCursorLeft = function () {
         if (this.CursorPosition != 0) {
-            this.CursorPosition -= 1;
+          this.CursorPosition -= 1;
         }
       }
 
-      //abcd
-          
-      this.MoveCursorRight = function()
-      {
+      this.MoveCursorRight = function () {
         if (this.CursorPosition <= this.text.length) {
-            this.CursorPosition += 1;
+          this.CursorPosition += 1;
         }
       }
 
@@ -120,13 +116,14 @@
         //console.log(this.text.length);
         this.Clear(context);
         context.strokeRect(this.x, this.y, this.width, this.height);
-        
         context.font = (this.height - (this.height * 0.25)) + 'px serif';
 
-        var c = new Cursor();
         var t = this.text.substring(0, this.CursorPosition);
         //console.log(t);
         var width = context.measureText(t).width;
+
+        var c = new Cursor();
+
         //console.log(width);
         c.x = (this.x + (this.width * 0.025)) + width;
         c.y = this.y + (this.height * 0.05);
@@ -140,7 +137,32 @@
         }
 
         if (this.text) {
-          context.fillText(this.text, this.x + (this.width * 0.025), this.y + this.height - (this.height * 0.25));
+          /*
+          if (context.measureText(this.text).width > this.width) {
+            if (CursorDisplay) {
+              c.Clear(context);
+              c.x = this.x + this.width - (this.height * 0.1);
+              c.Render(context);
+            }
+            else {
+              c.Clear(context);
+            }
+
+            var WidthOfASingleLetter = context.measureText(this.text[0]).width;
+
+            var difference = context.measureText(this.text).width - this.width;
+
+            var result = Math.ceil(difference / WidthOfASingleLetter);
+
+            context.fillText(this.text.substring(result, this.text.length - 1), this.x + (this.width * 0.025), this.y + this.height - (this.height * 0.25));
+          }
+          else { */
+            context.beginPath();
+            context.rect(this.x, this.y, this.width, this.height);
+            context.clip();
+            context.fillText(this.text, this.x + (this.width * 0.025), this.y + this.height - (this.height * 0.25));
+            context.restore();
+          //}
         }
       };
 
@@ -180,12 +202,10 @@
           //pass
         }
         else {
-          if(this.text == "")
-          {
+          if (this.text == "") {
             this.text = key;
           }
-          else
-          {
+          else {
             this.text = this.text.insert(key, this.CursorPosition);
           }
           this.MoveCursorRight();
@@ -238,11 +258,11 @@
       t.width = t.height * 4;
       t.Render(context);
 
-/*
-      setInterval(function () {
-        CursorDisplay = !CursorDisplay;
-        t.Render(context);
-      }, 500);*/
+      /*
+            setInterval(function () {
+              CursorDisplay = !CursorDisplay;
+              t.Render(context);
+            }, 500);*/
 
       function HandleClicks(x, y) {
         b.HandleClick(x, y);
