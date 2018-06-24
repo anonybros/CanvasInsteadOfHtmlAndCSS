@@ -28,7 +28,6 @@
         : what + this;
     };
 
-
     function WithinBox(x, y, xStart, yStart, xEnd, yEnd) {
       if (x >= xStart && x <= xEnd) {
         if (y >= yStart && y <= yEnd) {
@@ -138,34 +137,11 @@
         }
 
         if (this.text) {
-          /*
-          if (context.measureText(this.text).width > this.width) {
-            if (CursorDisplay) {
-              c.Clear(context);
-              c.x = this.x + this.width - (this.height * 0.1);
-              c.Render(context);
-            }
-            else {
-              c.Clear(context);
-            }
-
-            var WidthOfASingleLetter = context.measureText(this.text[0]).width;
-
-            var difference = context.measureText(this.text).width - this.width;
-
-            var result = Math.ceil(difference / WidthOfASingleLetter);
-
-            context.fillText(this.text.substring(result, this.text.length - 1), this.x + (this.width * 0.025), this.y + this.height - (this.height * 0.25));
-          }
-          else { */
-
           context.beginPath();
           context.rect(this.x, this.y, this.width, this.height);
           context.clip();
           context.fillText(this.text, (this.x + (this.width * 0.025)) - this.adjustment, this.y + this.height - (this.height * 0.25));
           context.restore();
-
-          //}
         }
       };
 
@@ -214,12 +190,10 @@
         }
 
         if (context.measureText(this.text.substring(0, this.CursorPosition)).width - this.adjustment >= this.width + this.x - (this.width * 0.025)) {
-          //console.log(context.measureText(this.text[this.text.length - 1]));
           this.adjustment += context.measureText(this.text[this.text.length - 1]).width;
         }
 
         if (context.measureText(this.text.substring(0, this.CursorPosition)).width - this.adjustment <= this.x + (this.width * 0.025)) {
-          //console.log(context.measureText(this.text[this.text.length - 1]));
           this.adjustment -= context.measureText(this.text[this.text.length - 1]).width;
           if (this.adjustment < 0) {
             this.adjustment = 0;
@@ -276,11 +250,10 @@
       t.width = t.height * 4;
       t.Render(context);
 
-      /*
-            setInterval(function () {
-              CursorDisplay = !CursorDisplay;
-              t.Render(context);
-            }, 500);*/
+      setInterval(function () {
+        CursorDisplay = !CursorDisplay;
+        t.Render(context);
+      }, 500);
 
       function HandleClicks(x, y) {
         /*b.HandleClick(x, y);
