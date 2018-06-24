@@ -96,6 +96,7 @@
       this.width = 0;
       this.height = 0;
       this.text = "";
+      this.adjustment = 0;
       this.AcceptInput = false;
       this.CursorPosition = 0;
 
@@ -125,7 +126,7 @@
         var c = new Cursor();
 
         //console.log(width);
-        c.x = (this.x + (this.width * 0.025)) + width;
+        c.x = (this.x + (this.width * 0.025)) + width - this.adjustment;
         c.y = this.y + (this.height * 0.05);
         c.height = this.height - (this.height * 0.1);
 
@@ -157,11 +158,13 @@
             context.fillText(this.text.substring(result, this.text.length - 1), this.x + (this.width * 0.025), this.y + this.height - (this.height * 0.25));
           }
           else { */
-            context.beginPath();
-            context.rect(this.x, this.y, this.width, this.height);
-            context.clip();
-            context.fillText(this.text, this.x + (this.width * 0.025), this.y + this.height - (this.height * 0.25));
-            context.restore();
+
+          context.beginPath();
+          context.rect(this.x, this.y, this.width, this.height);
+          context.clip();
+          context.fillText(this.text, (this.x + (this.width * 0.025)) - this.adjustment, this.y + this.height - (this.height * 0.25));
+          context.restore();
+
           //}
         }
       };
@@ -176,7 +179,6 @@
         }
 
         if (key == "Backspace") {
-          //this.text = this.text.slice(0, -1);
           this.text = this.text.substring(0, this.CursorPosition - 1) + this.text.substring(this.CursorPosition, this.text.length);
           this.MoveCursorLeft();
         }
@@ -210,6 +212,21 @@
           }
           this.MoveCursorRight();
         }
+
+        if (context.measureText(this.text.substring(0, this.CursorPosition)).width - this.adjustment >= this.width + this.x - (this.width * 0.025)) {
+          //console.log(context.measureText(this.text[this.text.length - 1]));
+          this.adjustment += context.measureText(this.text[this.text.length - 1]).width;
+        }
+
+        if (context.measureText(this.text.substring(0, this.CursorPosition)).width - this.adjustment <= this.x + (this.width * 0.025)) {
+          //console.log(context.measureText(this.text[this.text.length - 1]));
+          this.adjustment -= context.measureText(this.text[this.text.length - 1]).width;
+          if (this.adjustment < 0) {
+            this.adjustment = 0;
+          }
+        }
+
+        //console.log(this.text);
       }
 
       this.HandleClick = function (x, y) {
@@ -237,24 +254,25 @@
         HandleClicks(e.pageX, e.pageY);
       });
 
-      var b = new CheckBox();
-      b.x = 25;
-      b.y = 25;
-      b.radius = 75;
-      b.checked = true;
-      b.Render(context);
-
-      var b2 = new CheckBox();
-      b2.x = 500;
-      b2.y = 25;
-      b2.radius = 50;
-      b2.checked = false;
-      b2.Render(context);
-
+      /*
+            var b = new CheckBox();
+            b.x = 25;
+            b.y = 25;
+            b.radius = 75;
+            b.checked = true;
+            b.Render(context);
+      
+            var b2 = new CheckBox();
+            b2.x = 500;
+            b2.y = 25;
+            b2.radius = 50;
+            b2.checked = false;
+            b2.Render(context);
+      */
       var t = new TextBox();
-      t.x = 250;
-      t.y = 25;
-      t.height = 100;
+      t.x = 10;
+      t.y = 10;
+      t.height = 200;
       t.width = t.height * 4;
       t.Render(context);
 
@@ -265,10 +283,10 @@
             }, 500);*/
 
       function HandleClicks(x, y) {
-        b.HandleClick(x, y);
+        /*b.HandleClick(x, y);
         b.Render(context);
         b2.HandleClick(x, y);
-        b2.Render(context);
+        b2.Render(context);*/
         t.HandleClick(x, y);
         t.Render(context);
       }
