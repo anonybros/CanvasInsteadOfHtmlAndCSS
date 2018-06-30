@@ -191,17 +191,15 @@ function TextBox() {
 }
 
 function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
-    // need to add some form of padding
-    
     this.NumberOfColumns = NumberOfColumns;
     this.NumberOfRows = NumberOfRows;
     var Height = canvas.height;
     var Width = canvas.width;
     var HeightOfAColumn = Height / NumberOfRows;
     var WidthOfAColumn = Width / NumberOfColumns;
-    
+
     var Values = new Array(this.NumberOfColumns * this.NumberOfRows);
-    
+
     function PositionAndSizeFromGrid(Column, Row, object) {
         var x = WidthOfAColumn * Column;
         var y = HeightOfAColumn * Row;
@@ -212,12 +210,12 @@ function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
         object.height = HeightOfAColumn;
         object.width = WidthOfAColumn;
     }
-    
+
     this.AddToGrid = function (item, Column, Row) {
         PositionAndSizeFromGrid(Column, Row, item)
         Values[Row * this.NumberOfColumns + Column] = item;
     }
-    
+
     function ForEach(action, array) {
         for (let index = 0; index < array.length; index++) {
             const element = array[index];
@@ -226,23 +224,27 @@ function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
             }
         }
     }
-    
+
     this.Render = function (context) {
         ForEach(function (o) {
             o.Render(context);
         }, Values)
     };
-    
+
     this.HandleClick = function (x, y) {
         ForEach(function (o) {
-            o.HandleClick(x, y);
+            if (o.HandleClick) {
+                o.HandleClick(x, y);
+            }
             o.Render(context);
         }, Values)
     }
-    
+
     this.HandleKeyDown = function (key) {
         ForEach(function (o) {
-            o.HandleKeyDown(key);
+            if (o.HandleKeyDown) {
+                o.HandleKeyDown(key);
+            }
             o.Render(context);
         }, Values)
     }
@@ -257,11 +259,16 @@ function Button() {
     this.onclick = null;
     this.Render = function (context) {
         this.Clear(context);
+        context.save();
+        context.fillStyle="#cccccc";
+        context.fillRect(this.x, this.y, this.width, this.height);
+        context.restore();
         if (this.text) {
+            context.save();
             context.beginPath();
             context.rect(this.x, this.y, this.width, this.height);
             context.clip();
-            context.fillText(this.text, (this.x + (this.width * 0.025)) - this.adjustment, this.y + this.height - (this.height * 0.25));
+            context.fillText(this.text, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
             context.restore();
         }
     };
@@ -279,24 +286,60 @@ function Button() {
     }
 }
 
+function Text() {
+    this.x = 0;
+    this.y = 0;
+    this.width = 0;
+    this.height = 0;
+    this.text = "";
+
+    this.Render = function (context) {
+        this.Clear(context);
+        if (this.text) {
+            context.beginPath();
+            context.rect(this.x, this.y, this.width, this.height);
+            context.clip();
+            context.fillText(this.text, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
+            context.restore();
+        }
+    };
+
+    this.Clear = function (context) {
+        context.clearRect(this.x, this.y, this.width, this.height);
+    }
+}
+
 var canvas;
 var context;
 var CursorDisplay = true;
+
+
+// need to add padding 
+// style button like a button
+// create columns and rows of any size
 
 $(function () {
     $canvas = $('#main');
     canvas = $canvas[0];
     context = canvas.getContext('2d');
 
+    var CurrentPage = null;
+
     var main = new GridLayoutManager(context, canvas, 5, 5);
+    var page2 = new GridLayoutManager(context, canvas, 1, 1);
+
+    var t = new Text();
+    t.text = "Page 2";
+
+    page2.AddToGrid(t, 0, 0);
 
     $(document).keydown(function (e) {
         e.preventDefault();
-        main.HandleKeyDown(e.key);
+        CurrentPage.HandleKeyDown(e.key);
     });
 
     $canvas.click(function (e) {
-        main.HandleClick(e.pageX, e.pageY);
+        CurrentPage.HandleClick(e.pageX, e.pageY);
     });
 
     setInterval(function () {
@@ -304,11 +347,21 @@ $(function () {
     }, 500);
 
 
+    var b = new Button();
+    b.onclick = function () {
+        CurrentPage = page2;
+        main.Clear(context);
+        page2.Render(context);
+    };
+    b.text = "2";
+
     main.AddToGrid(new TextBox(), 0, 0)
     main.AddToGrid(new CheckBox(), 1, 1)
     main.AddToGrid(new TextBox(), 2, 0)
-    main.AddToGrid(new TextBox(), 0, 2)
+    main.AddToGrid(b, 0, 2)
     main.AddToGrid(new CheckBox(), 5, 5)
 
     main.Render(context);
+
+    CurrentPage = main;
 });
