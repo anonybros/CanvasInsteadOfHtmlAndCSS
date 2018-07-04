@@ -77,42 +77,47 @@ interface Renderable {
     Clear(): void;
     HandleClick(x: number, y: number): void;
     HandleKeyDown(x: string): void;
-    //ApplyPadding(padding: Padding): void;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
 }
 
 class CheckBox implements Renderable {
     private context: RenderContext;
     x: number;
     y: number;
-    radius: number;
+    width: number;
+    height: number;
     checked: boolean;
 
-    constructor(context: RenderContext, x: number, y: number, radius: number, checked: boolean) {
+    constructor(context: RenderContext, x: number = 0, y: number = 0, width: number = 0, height: number = 0, checked: boolean = false) {
         this.context = context;
         this.x = x;
         this.y = y;
-        this.radius = radius;
+        this.width = width;
+        this.height = height;
         this.checked = checked;
     }
 
     Render() {
         this.Clear();
-        this.context.DrawBox(this.x, this.y, this.radius * 2, this.radius * 2);
+        this.context.DrawBox(this.x, this.y, this.width, this.height);
         if (this.checked) {
             this.context.DrawCheckMark(
-                this.x + (this.radius * 0.05), this.y + this.radius - (this.radius * 0.05),
-                this.x + this.radius, this.y + this.radius + (this.radius * 0.9),
-                this.x + this.radius * 2 - (this.radius * 0.05), this.y + (this.radius * 0.05)
+                this.x + (this.width / 2 * 0.05), this.y +this.width / 2 - (this.width / 2 * 0.05),
+                this.x + this.width / 2, this.y + this.width / 2 + (this.width / 2 * 0.9),
+                this.x + this.width - (this.width / 2 * 0.05), this.y + (this.width / 2 * 0.05)
             );
         }
     }
 
     Clear() {
-        this.context.ClearWithinBox(this.x, this.y, this.radius * 2, this.radius * 2);
+        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
     }
 
     HandleClick(x: number, y: number) {
-        if (this.context.WithinBox(x, y, this.x, this.y, this.radius * 2, this.radius * 2)) {
+        if (this.context.WithinBox(x, y, this.x, this.y, this.width, this.height)) {
             this.checked = !this.checked;
         }
     }
@@ -374,17 +379,17 @@ class Padding {
     right: number;
     bottom: number;
     constructor(top: number, left: number, right: number, bottom: number) {
-        this.top = top;
-        this.left = left;
-        this.right = right;
-        this.bottom = bottom;
+        this.top = top / 1000;
+        this.left = left / 1000;
+        this.right = right / 1000;
+        this.bottom = bottom / 1000;
     }
 }
 
 class Definition {
     size: number;
     constructor(size: number) {
-        this.size = size;
+        this.size = size / 1000;
     }
 }
 
@@ -395,10 +400,12 @@ class RowDefinition extends Definition {
 }
 
 class Cell {
-    item: Renderable
-    constructor(item: Renderable)
+    item: Renderable;
+    padding: Padding;
+    constructor(item: Renderable, padding: Padding)
     {
         this.item = item;
+        this.padding = padding;
     }
 }
 
@@ -410,8 +417,9 @@ class GridLayoutManager implements Renderable {
     width: number;
     rows: Array<RowDefinition>;
     columns: Array<ColumnDefinition>;
+    cells: Array<Array<Cell>>;
 
-    constructor(context: RenderContext, x: number, y: number, width: number, height: number, rows: Array<RowDefinition>, columns: Array<ColumnDefinition>) {
+    constructor(context: RenderContext, x: number, y: number, width: number, height: number, rows: Array<RowDefinition>, columns: Array<ColumnDefinition>, cells: Array<Array<Cell>>) {
         this.context = context;
         this.x = x;
         this.y = y;
@@ -419,10 +427,39 @@ class GridLayoutManager implements Renderable {
         this.height = height;
         this.rows = rows;
         this.columns = columns;
+        this.cells = cells;
+
+        var PrecomputedRowHeights = new Array<number>();
+        var PrecomputedColumnWidths = new Array<number>();
+
+        rows.reduce(function(a,b,i) { return PrecomputedRowHeights[i] = a+b.size * height; }, 0);
+        columns.reduce(function(a,b,i) { return PrecomputedColumnWidths[i] = a+b.size * width; }, 0);
+
+        if(this.cells.length != rows.length * columns.length)
+        {
+            throw new Error("invalid combination of definitions and cells");
+        }
+
+        cells.forEach((Row, RowNumber) => {
+            Row.forEach((Cell, ColumnNumber) => {
+                var _Width = PrecomputedColumnWidths[ColumnNumber];
+                var _Height = PrecomputedRowHeights[RowNumber];
+                var padding = Cell.padding;
+                Cell.item.x = _Width + padding.left;
+                Cell.item.y = _Height + padding.top;
+                Cell.item.width = PrecomputedColumnWidths[ColumnNumber + 1] -  padding.right;
+                Cell.item.height = PrecomputedRowHeights[ColumnNumber + 1] -  padding.bottom;
+            });
+        });
     }
 
     Render() {
         this.Clear();
+        this.cells.forEach((row) => {
+            row.forEach(cell => {
+                cell.item.Render();
+            });
+        });
     }
 
     Clear() {
@@ -430,83 +467,28 @@ class GridLayoutManager implements Renderable {
     }
 
     HandleClick(x: number, y: number) {
+        this.cells.forEach((row) => {
+            row.forEach(cell => {
+                cell.item.HandleClick(x, y);
+            });
+        });
     }
 
-    HandleKeyDown(x: string) {
-    }
-}
-
-/*
-function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
-    this.NumberOfColumns = NumberOfColumns;
-    this.NumberOfRows = NumberOfRows;
-    var Height = canvas.height;
-    var Width = canvas.width;
-    var HeightOfAColumn = Height / NumberOfRows;
-    var WidthOfAColumn = Width / NumberOfColumns;
-
-    var Values = new Array(this.NumberOfColumns * this.NumberOfRows);
-
-    function PositionAndSizeFromGrid(Column, Row, object) {
-        var x = WidthOfAColumn * Column;
-        var y = HeightOfAColumn * Row;
-
-        object.x = x;
-        object.y = y;
-        object.radius = HeightOfAColumn / 2;
-        object.height = HeightOfAColumn;
-        object.width = WidthOfAColumn;
-    }
-
-    this.AddToGrid = function (item, Column, Row) {
-        PositionAndSizeFromGrid(Column, Row, item)
-        Values[Row * this.NumberOfColumns + Column] = item;
-    }
-
-    function ForEach(action, array) {
-        for (let index = 0; index < array.length; index++) {
-            const element = array[index];
-            if (element != null) {
-                action(element);
-            }
-        }
-    }
-
-    this.Render = function (context) {
-        ForEach(function (o) {
-            o.Render(context);
-        }, Values)
-    };
-
-    this.HandleClick = function (x, y) {
-        ForEach(function (o) {
-            if (o.HandleClick) {
-                o.HandleClick(x, y);
-            }
-            o.Render(context);
-        }, Values)
-    }
-
-    this.HandleKeyDown = function (key) {
-        ForEach(function (o) {
-            if (o.HandleKeyDown) {
-                o.HandleKeyDown(key);
-            }
-            o.Render(context);
-        }, Values)
+    HandleKeyDown(key: string) {
+        this.cells.forEach((row) => {
+            row.forEach(cell => {
+                cell.item.HandleKeyDown(key);
+            });
+        });
     }
 }
-*/
 
 var canvas: HTMLCanvasElement;
 var context: CanvasRenderingContext2D;
 var CursorDisplay = true;
 
 
-// need to add padding 
 // style button like a button
-// create columns and rows of any size
-// avoid duplicates of drawing /handling functions - so much duplicated codes
 
 window.onload = () => {
     canvas = <HTMLCanvasElement>document.getElementById('main');
