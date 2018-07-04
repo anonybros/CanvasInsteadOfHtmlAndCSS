@@ -1,298 +1,372 @@
-String.prototype.insert = function (what, index) {
-    return index > 0
-        ? this.replace(new RegExp('.{' + index + '}'), '$&' + what)
-        : what + this;
-};
+class RenderContext {
+    context: CanvasRenderingContext2D
+    // these a the html5 spec defaults
+    FillStyle: string = "#000";
+    Font: string = "10px sans-serif";
 
-    Object.create = function (obj) {
-        function tmp() { }
-        tmp.prototype = obj;
-        return obj;
-    };
-
-function Renderable(context) {
-    this.x = 0;
-    this.y = 0;
-    this.width = 0;
-    this.height = 0;
-    this.context = context;
-
-    this.DrawBox = function (x, y, width, height) {
-        context.strokeRect(x, y, width, height);
+    constructor(context: CanvasRenderingContext2D) {
+        this.context = context;
     }
 
-    this.DrawBoxFill = function (x, y, width, height)
-    {
-        context.fillRect(x, y, width, height);
+    DrawBox(x: number, y: number, width: number, height: number) {
+        this.context.strokeRect(x, y, width, height);
     }
 
-    this.DrawCheckMark = function (x, y, x2, y2, x3, y3)
-    {
-        context.beginPath();
-        context.moveTo(x, y);
-        context.lineTo(x2, y2);
-        context.lineTo(x3, y3);
-        context.stroke();
-        context.closePath();
+    DrawBoxFill(x: number, y: number, width: number, height: number) {
+        this.context.fillRect(x, y, width, height);
     }
 
-    this.WithinThisBox = function (x, y) {
-        if (x >= this.x && x <= this.x + this.width) {
-            if (y >= this.y && y <= this.y + this.height) {
+    DrawCheckMark(x: number, y: number, x2: number, y2: number, x3: number, y3: number) {
+        this.context.beginPath();
+        this.context.moveTo(x, y);
+        this.context.lineTo(x2, y2);
+        this.context.lineTo(x3, y3);
+        this.context.stroke();
+        this.context.closePath();
+    }
+
+    WithinBox(x: number, y: number, boxX: number, boxY: number, width: number, height: number) {
+        if (x >= boxX && x <= boxX + width) {
+            if (y >= boxY && y <= boxY + height) {
                 return true;
             }
             return false;
         }
     }
 
-    this.MeasureText = function (text) {
-        return context.measureText(text).width;
+    MeasureText(text: string) {
+        return this.context.measureText(text).width;
     }
 
-    this.DrawText = function (text, x, y) {
-        context.fillText(text, x, y);
+    DrawText(text: string, x: number, y: number) {
+        this.context.fillText(text, x, y);
     }
 
-    this.DrawTextClipped = function (text, x, y) {
-        context.save();
-        context.beginPath();
-        context.rect(this.x, this.y, this.width, this.height);
-        context.clip();
-        context.fillText(text, x, y);
-        context.restore();
+    DrawTextClipped(text: string, x: number, y: number, width: number, height: number) {
+        this.context.save();
+        this.context.beginPath();
+        this.context.rect(x, y, width, height);
+        this.context.clip();
+        this.context.fillText(text, x, y);
+        this.context.restore();
     }
 
-    this.ClearWithinThisBox = function () {
-        context.clearRect(this.x, this.y, this.width, this.height);
+    ClearWithinBox(x: number, y: number, width: number, height: number) {
+        this.context.clearRect(x, y, width, height);
     }
 
-    this.HandleClick = function (x, y) { };
-    this.Clear = function () { };
-    this.HandleKeyDown = function (key) { };
-    this.Render = function () { };
+    SetFont(font: string) {
+        this.context.font = font;
+    }
+
+    ResetFont() {
+        this.context.font = this.Font;
+    }
+
+    SetFillStyle(style: string) {
+        this.context.fillStyle = style;
+    }
+
+    ResetFillStyle() {
+        this.context.fillStyle = this.FillStyle;
+    }
 }
 
-var CheckBox = Object.create(Renderable);
-CheckBox.checked = false;
-CheckBox.radius = 0;
-CheckBox.Render = function () {
-    this.Clear();
-    this.drawBox(this.x, this.y, this.radius * 2, this.radius * 2);
-    if (this.checked) {
-        this.DrawCheckMark(
-            this.x + (this.radius * 0.05), this.y + this.radius - (this.radius * 0.05),
-            this.x + this.radius, this.y + this.radius + (this.radius * 0.9),
-            this.x + this.radius * 2 - (this.radius * 0.05), this.y + (this.radius * 0.05)
+interface Renderable {
+    Render(): void;
+    Clear(): void;
+    HandleClick(x: number, y: number): void;
+    HandleKeyDown(x: string): void;
+}
+
+class CheckBox implements Renderable {
+    private context: RenderContext;
+    x: number;
+    y: number;
+    radius: number;
+    checked: boolean;
+
+    constructor(context: RenderContext, x: number, y: number, radius: number, checked: boolean) {
+        this.context = context;
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.checked = checked;
+    }
+
+    Render() {
+        this.Clear();
+        this.context.DrawBox(this.x, this.y, this.radius * 2, this.radius * 2);
+        if (this.checked) {
+            this.context.DrawCheckMark(
+                this.x + (this.radius * 0.05), this.y + this.radius - (this.radius * 0.05),
+                this.x + this.radius, this.y + this.radius + (this.radius * 0.9),
+                this.x + this.radius * 2 - (this.radius * 0.05), this.y + (this.radius * 0.05)
+            );
+        }
+    }
+
+    Clear() {
+        this.context.ClearWithinBox(this.x, this.y, this.radius * 2, this.radius * 2);
+    }
+
+    HandleClick(x: number, y: number) {
+        if (this.context.WithinBox(x, y, this.x, this.y, this.radius * 2, this.radius * 2)) {
+            this.checked = !this.checked;
+        }
+    }
+
+    HandleKeyDown(x: string) {
+    }
+}
+
+
+class Cursor implements Renderable {
+    private context: RenderContext;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+
+    constructor(context: RenderContext, x: number, y: number, height: number) {
+        this.context = context;
+        this.x = x;
+        this.y = y;
+        this.width = 1;
+        this.height = height;
+    }
+
+    Render() {
+        this.Clear();
+        this.context.DrawBox(this.x, this.y, this.width, this.height);
+    }
+
+    Clear() {
+        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
+    }
+
+    HandleClick(x: number, y: number) {
+    }
+
+    HandleKeyDown(x: string) {
+    }
+}
+
+class TextBox implements Renderable {
+    private context: RenderContext;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+    text: string;
+    adjustment: number;
+    AcceptInput: boolean;
+    CursorPosition: number;
+
+    constructor(context: RenderContext, x: number, y: number, width: number, height: number, text: string) {
+        this.context = context;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.text = text;
+        this.adjustment = 0;
+        this.AcceptInput = false;
+        this.CursorPosition = 0;
+    }
+
+    Render() {
+        this.Clear();
+        this.context.DrawBox(this.x, this.y, this.width, this.height);
+        this.context.SetFont((this.height - (this.height * 0.25)) + 'px serif');
+
+        var t = this.text.substring(0, this.CursorPosition);
+        //console.log(t);
+        var width = this.context.MeasureText(t);
+
+        var c = new Cursor(
+            this.context,
+            (this.x + (this.width * 0.025)) + width - this.adjustment,
+            this.y + (this.height * 0.05),
+            this.height - (this.height * 0.1)
         );
-    }
-};
-CheckBox.HandleClick = function (x, y) {
-    if (this.WithinThisBox(x, y)) {
-        this.checked = !this.checked;
-    }
-};
 
-function StampCheckbox(context, x, y, radius, checked) {
-    var c = new CheckBox(context);
-    c.x = x;
-    c.y = y;
-    c.checked = checked;
-    c.radius = radius;
-    return c;
-}
-
-var Cursor = Object.create(Renderable);
-Cursor.height = 0;
-Cursor.Render = function () {
-    var width = 1;
-    this.Clear();
-    this.DrawBox(this.x, this.y, width, this.height);
-};
-
-function StampCursor(context, x, y, height) {
-    var c = new Cursor(context);
-    c.x = x;
-    c.y = y;
-    c.height = height;
-    return c;
-}
-
-var TextBox = Object.create(Renderable);
-TextBox.text = "";
-TextBox.adjustment = 0;
-TextBox.AcceptInput = false;
-TextBox.CursorPosition = 0;
-TextBox.MoveCursorLeft = function () {
-    if (this.CursorPosition != 0) {
-        this.CursorPosition -= 1;
-    }
-}
-TextBox.MoveCursorRight = function () {
-    if (this.CursorPosition <= this.text.length) {
-        this.CursorPosition += 1;
-    }
-}
-TextBox.Render = function () {
-    //console.log(this.CursorPosition)
-    //console.log(this.text.length);
-    this.Clear();
-    this.DrawBox(this.x, this.y, this.width, this.height);
-    this.context.font = (this.height - (this.height * 0.25)) + 'px serif';
-
-    var t = this.text.substring(0, this.CursorPosition);
-    //console.log(t);
-    var width = this.MeasureText(t);
-
-    var c = new Cursor();
-
-    //console.log(width);
-    var c = StampCursor(
-        this.context,
-        (this.x + (this.width * 0.025)) + width - this.adjustment,
-        this.y + (this.height * 0.05),
-        this.height - (this.height * 0.1)
-    )
-
-    if (this.AcceptInput && CursorDisplay) {
-        //console.log("displaying at " + c.x + " " + c.y)
-        c.Render();
-    }
-    else {
-        //console.log("not displaying")
-        c.Clear();
-    }
-
-    if (this.text) {
-        this.DrawTextClipped(this.text, (this.x + (this.width * 0.025)) - this.adjustment, this.y + this.height - (this.height * 0.25));
-    }
-};
-
-TextBox.HandleKeyDown = function (key) {
-    if (!this.AcceptInput) {
-        return;
-    }
-
-    if (key == "Backspace") {
-        this.text = this.text.substring(0, this.CursorPosition - 1) + this.text.substring(this.CursorPosition, this.text.length);
-        this.MoveCursorLeft();
-    }
-    else if (key == "ArrowDown") {
-        //pass
-    }
-    else if (key == "Delete") {
-        this.text = this.text.substring(0, this.CursorPosition) + this.text.substring(this.CursorPosition + 1, this.text.length);
-    }
-    else if (key == "ArrowUp") {
-        //pass
-    }
-    else if (key == "ArrowRight") {
-        this.MoveCursorRight();
-    }
-    else if (key == "ArrowLeft") {
-        this.MoveCursorLeft();
-    }
-    else if (key == "Shift") {
-        //pass
-    }
-    else if (key == "Enter") {
-        //pass
-    }
-    else {
-        if (this.text == "") {
-            this.text = key;
+        if (this.AcceptInput && CursorDisplay) {
+            //console.log("displaying at " + c.x + " " + c.y)
+            c.Render();
         }
         else {
-            this.text = this.text.insert(key, this.CursorPosition);
+            //console.log("not displaying")
+            c.Clear();
         }
-        this.MoveCursorRight();
+
+        if (this.text) {
+            this.context.DrawTextClipped(this.text, this.x, this.y, (this.x + (this.width * 0.025)) - this.adjustment, this.y + this.height - (this.height * 0.25));
+        }
     }
 
-    if (context.measureText(this.text.substring(0, this.CursorPosition)).width - this.adjustment >= this.width + this.x - (this.width * 0.025)) {
-        this.adjustment += context.measureText(this.text[this.text.length - 1]).width;
+    Clear() {
+        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
     }
 
-    if (context.measureText(this.text.substring(0, this.CursorPosition)).width - this.adjustment <= this.x + (this.width * 0.025)) {
-        this.adjustment -= context.measureText(this.text[this.text.length - 1]).width;
-        if (this.adjustment < 0) {
-            this.adjustment = 0;
+    HandleClick(x: number, y: number) {
+        if (this.context.WithinBox(x, y, this.x, this.y, this.width, this.height)) {
+            this.AcceptInput = true;
+        }
+        else {
+            this.AcceptInput = false;
+        }
+    }
+
+    HandleKeyDown(key: string) {
+        if (!this.AcceptInput) {
+            return;
+        }
+
+        if (key == "Backspace") {
+            this.text = this.text.substring(0, this.CursorPosition - 1) + this.text.substring(this.CursorPosition, this.text.length);
+            this.MoveCursorLeft();
+        }
+        else if (key == "ArrowDown") {
+            //pass
+        }
+        else if (key == "Delete") {
+            this.text = this.text.substring(0, this.CursorPosition) + this.text.substring(this.CursorPosition + 1, this.text.length);
+        }
+        else if (key == "ArrowUp") {
+            //pass
+        }
+        else if (key == "ArrowRight") {
+            this.MoveCursorRight();
+        }
+        else if (key == "ArrowLeft") {
+            this.MoveCursorLeft();
+        }
+        else if (key == "Shift") {
+            //pass
+        }
+        else if (key == "Enter") {
+            //pass
+        }
+        else {
+            if (this.text == "") {
+                this.text = key;
+            }
+            else {
+                var insert = function (str: string, what: string, index: number) {
+                    return index > 0
+                        ? str.replace(new RegExp('.{' + index + '}'), '$&' + what)
+                        : what + str;
+                }
+                this.text = insert(this.text, key, this.CursorPosition)
+            }
+            this.MoveCursorRight();
+        }
+
+        if (this.context.MeasureText(this.text.substring(0, this.CursorPosition)) - this.adjustment >= this.width + this.x - (this.width * 0.025)) {
+            this.adjustment += this.context.MeasureText(this.text[this.text.length - 1]);
+        }
+
+        if (this.context.MeasureText(this.text.substring(0, this.CursorPosition)) - this.adjustment <= this.x + (this.width * 0.025)) {
+            this.adjustment -= this.context.MeasureText(this.text[this.text.length - 1]);
+            if (this.adjustment < 0) {
+                this.adjustment = 0;
+            }
+        }
+
+    }
+
+    private MoveCursorLeft() {
+        if (this.CursorPosition != 0) {
+            this.CursorPosition -= 1;
+        }
+    }
+
+    private MoveCursorRight() {
+        if (this.CursorPosition <= this.text.length) {
+            this.CursorPosition += 1;
         }
     }
 }
 
-TextBox.HandleClick = function (x, y) {
-    if (this.WithinThisBox(x, y)) {
-        this.AcceptInput = true;
-    }
-    else {
-        this.AcceptInput = false;
-    }
-};
+class Button implements Renderable {
+    private context: RenderContext;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+    text: string;
+    onclick: () => void
 
-function StampTextBox(context, x, y, width, height, text) {
-    var t = new TextBox(context);
-    t.x = x;
-    t.y = y;
-    t.width = width;
-    t.height = height;
-    t.text = text;
-    return t;
-}
-
-var Button = Object.create(Renderable);
-Button.onclick = null;
-Button.text = "";
-Button.Render = function () {
-    this.Clear();
-    this.context.save();
-    this.context.fillStyle = "#cccccc";
-    this.DrawBoxFill(this.x, this.y, this.width, this.height);
-    this.context.restore();
-    if (this.text) {
-        this.DrawTextClipped(this.text, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
+    constructor(context: RenderContext, x: number, y: number, height: number, onclick: () => void, text: string) {
+        this.context = context;
+        this.x = x;
+        this.y = y;
+        this.width = 1;
+        this.height = height;
+        this.onclick = onclick;
+        this.text = text;
     }
-};
 
-Button.HandleClick = function (x, y) {
-    if (this.WithinThisBox(x, y)) {
-        if (this.onclick) {
+    Render() {
+        this.context.SetFillStyle("#cccccc");
+        this.context.DrawBoxFill(this.x, this.y, this.width, this.height);
+        this.context.ResetFillStyle();
+        if (this.text) {
+            this.context.DrawTextClipped(this.text, this.x, this.y, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
+        }
+    }
+
+    Clear() {
+        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
+    }
+
+    HandleClick(x: number, y: number) {
+        if (this.context.WithinBox(x, y, this.x, this.y, this.x + this.width, this.y + this.height)) {
             this.onclick();
         }
     }
-};
 
-function StampButton(context, x, y, width, height, text, click)
-{
-    var t = new Button(context);
-    t.x = x;
-    t.y = y;
-    t.width = width;
-    t.height = height;
-    t.text = text;
-    t.onclick = click;
-    return t;
-}
-
-var Text = Object.create(Renderable);
-Text.text = "";
-
-Text.Render = function () {
-    this.Clear();
-    if (this.text) {
-        this.DrawTextClipped(this.text, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
+    HandleKeyDown(x: string) {
     }
-};
-
-function StampText(context, x, y, width, height, text)
-{
-    var t = new Text(context);
-    t.x = x;
-    t.y = y;
-    t.width = width;
-    t.height = height;
-    t.text = text;
-    return t;
 }
 
+
+class Text implements Renderable {
+    private context: RenderContext;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+    text: string;
+
+    constructor(context: RenderContext, x: number, y: number, height: number, text: string) {
+        this.context = context;
+        this.x = x;
+        this.y = y;
+        this.width = 1;
+        this.height = height;
+        this.text = text;
+    }
+
+    Render() {
+        this.Clear();
+        if (this.text) {
+            this.context.DrawTextClipped(this.text,this.x, this.y, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
+        }
+    }
+
+    Clear() {
+        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
+    }
+
+    HandleClick(x: number, y: number) {
+    }
+
+    HandleKeyDown(x: string) {
+    }
+}
+/*
 function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
     this.NumberOfColumns = NumberOfColumns;
     this.NumberOfRows = NumberOfRows;
@@ -352,10 +426,10 @@ function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
         }, Values)
     }
 }
+*/
 
-
-var canvas;
-var context;
+var canvas : HTMLCanvasElement;
+var context : CanvasRenderingContext2D;
 var CursorDisplay = true;
 
 
@@ -364,10 +438,9 @@ var CursorDisplay = true;
 // create columns and rows of any size
 // avoid duplicates of drawing /handling functions - so much duplicated codes
 
-$(function () {
-    $canvas = $('#main');
-    canvas = $canvas[0];
-    context = canvas.getContext('2d');
+window.onload = () => {
+    canvas = <HTMLCanvasElement> document.getElementById('main');
+    context = <CanvasRenderingContext2D> canvas.getContext('2d');
 
     var CurrentPage = null;
 
@@ -378,32 +451,33 @@ $(function () {
 
     page2.AddToGrid(t, 0, 0);
 
-    $(document).keydown(function (e) {
+    document.onkeydown = (e) => {
         e.preventDefault();
         CurrentPage.HandleKeyDown(e.key);
-    });
+    }
 
-    $canvas.click(function (e) {
+    canvas.onclick = (e) => {
         CurrentPage.HandleClick(e.pageX, e.pageY);
-    });
+
+    }
 
     setInterval(function () {
         CursorDisplay = !CursorDisplay;
     }, 500);
 
-    var b = StampButton(context, 0,0,0,0,"2", function () {
+    var b = StampButton(context, 0, 0, 0, 0, "2", function () {
         CurrentPage = page2;
         main.Clear(context);
         page2.Render(context);
     });
 
-    main.AddToGrid(StampTextBox(context, 0,0,0,0,"0,0"), 0, 0)
-    main.AddToGrid(StampCheckbox(context, 0,0,0,false), 1, 1)
-    main.AddToGrid(StampTextBox(context, 0,0,0,0,"2,0"), 2, 0)
+    main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "0,0"), 0, 0)
+    main.AddToGrid(StampCheckbox(context, 0, 0, 0, false), 1, 1)
+    main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "2,0"), 2, 0)
     main.AddToGrid(b, 0, 2)
-    main.AddToGrid(StampCheckbox(context, 0,0,0,true), 5, 5)
+    main.AddToGrid(StampCheckbox(context, 0, 0, 0, true), 5, 5)
 
     main.Render(context);
 
     CurrentPage = main;
-});
+}
