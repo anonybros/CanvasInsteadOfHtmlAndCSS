@@ -77,6 +77,7 @@ interface Renderable {
     Clear(): void;
     HandleClick(x: number, y: number): void;
     HandleKeyDown(x: string): void;
+    //ApplyPadding(padding: Padding): void;
 }
 
 class CheckBox implements Renderable {
@@ -331,28 +332,27 @@ class Button implements Renderable {
     }
 }
 
-
-class Text implements Renderable {
+class TextLiteral implements Renderable {
     private context: RenderContext;
     x: number;
     y: number;
     height: number;
     width: number;
-    text: string;
+    text_: string;
 
-    constructor(context: RenderContext, x: number, y: number, height: number, text: string) {
+    constructor(context: RenderContext, x: number, y: number, height: number, text_: string) {
         this.context = context;
         this.x = x;
         this.y = y;
         this.width = 1;
         this.height = height;
-        this.text = text;
+        this.text_ = text_;
     }
 
     Render() {
         this.Clear();
-        if (this.text) {
-            this.context.DrawTextClipped(this.text,this.x, this.y, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
+        if (this.text_) {
+            this.context.DrawTextClipped(this.text_, this.x, this.y, (this.x + (this.width * 0.025)), this.y + this.height - (this.height * 0.25));
         }
     }
 
@@ -366,6 +366,76 @@ class Text implements Renderable {
     HandleKeyDown(x: string) {
     }
 }
+
+
+class Padding {
+    top: number;
+    left: number;
+    right: number;
+    bottom: number;
+    constructor(top: number, left: number, right: number, bottom: number) {
+        this.top = top;
+        this.left = left;
+        this.right = right;
+        this.bottom = bottom;
+    }
+}
+
+class Definition {
+    size: number;
+    constructor(size: number) {
+        this.size = size;
+    }
+}
+
+class ColumnDefinition extends Definition {
+}
+
+class RowDefinition extends Definition {
+}
+
+class Cell {
+    item: Renderable
+    constructor(item: Renderable)
+    {
+        this.item = item;
+    }
+}
+
+class GridLayoutManager implements Renderable {
+    private context: RenderContext;
+    x: number;
+    y: number;
+    height: number;
+    width: number;
+    rows: Array<RowDefinition>;
+    columns: Array<ColumnDefinition>;
+
+    constructor(context: RenderContext, x: number, y: number, width: number, height: number, rows: Array<RowDefinition>, columns: Array<ColumnDefinition>) {
+        this.context = context;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.rows = rows;
+        this.columns = columns;
+    }
+
+    Render() {
+        this.Clear();
+    }
+
+    Clear() {
+        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
+    }
+
+    HandleClick(x: number, y: number) {
+    }
+
+    HandleKeyDown(x: string) {
+    }
+}
+
 /*
 function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
     this.NumberOfColumns = NumberOfColumns;
@@ -428,8 +498,8 @@ function GridLayoutManager(context, canvas, NumberOfColumns, NumberOfRows) {
 }
 */
 
-var canvas : HTMLCanvasElement;
-var context : CanvasRenderingContext2D;
+var canvas: HTMLCanvasElement;
+var context: CanvasRenderingContext2D;
 var CursorDisplay = true;
 
 
@@ -439,45 +509,46 @@ var CursorDisplay = true;
 // avoid duplicates of drawing /handling functions - so much duplicated codes
 
 window.onload = () => {
-    canvas = <HTMLCanvasElement> document.getElementById('main');
-    context = <CanvasRenderingContext2D> canvas.getContext('2d');
-
-    var CurrentPage = null;
-
-    var main = new GridLayoutManager(context, canvas, 5, 5);
-    var page2 = new GridLayoutManager(context, canvas, 1, 1);
-
-    var t = StampText(context, 0, 0, 0, 0, "Page2")
-
-    page2.AddToGrid(t, 0, 0);
-
-    document.onkeydown = (e) => {
-        e.preventDefault();
-        CurrentPage.HandleKeyDown(e.key);
-    }
-
-    canvas.onclick = (e) => {
-        CurrentPage.HandleClick(e.pageX, e.pageY);
-
-    }
-
-    setInterval(function () {
-        CursorDisplay = !CursorDisplay;
-    }, 500);
-
-    var b = StampButton(context, 0, 0, 0, 0, "2", function () {
-        CurrentPage = page2;
-        main.Clear(context);
-        page2.Render(context);
-    });
-
-    main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "0,0"), 0, 0)
-    main.AddToGrid(StampCheckbox(context, 0, 0, 0, false), 1, 1)
-    main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "2,0"), 2, 0)
-    main.AddToGrid(b, 0, 2)
-    main.AddToGrid(StampCheckbox(context, 0, 0, 0, true), 5, 5)
-
-    main.Render(context);
-
-    CurrentPage = main;
+    canvas = <HTMLCanvasElement>document.getElementById('main');
+    context = <CanvasRenderingContext2D>canvas.getContext('2d');
+    /*
+        var CurrentPage = null;
+    
+        var main = new GridLayoutManager(context, canvas, 5, 5);
+        var page2 = new GridLayoutManager(context, canvas, 1, 1);
+    
+        var t = StampText(context, 0, 0, 0, 0, "Page2")
+    
+        page2.AddToGrid(t, 0, 0);
+    
+        document.onkeydown = (e) => {
+            e.preventDefault();
+            CurrentPage.HandleKeyDown(e.key);
+        }
+    
+        canvas.onclick = (e) => {
+            CurrentPage.HandleClick(e.pageX, e.pageY);
+    
+        }
+    
+        setInterval(function () {
+            CursorDisplay = !CursorDisplay;
+        }, 500);
+    
+        var b = StampButton(context, 0, 0, 0, 0, "2", function () {
+            CurrentPage = page2;
+            main.Clear(context);
+            page2.Render(context);
+        });
+    
+        main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "0,0"), 0, 0)
+        main.AddToGrid(StampCheckbox(context, 0, 0, 0, false), 1, 1)
+        main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "2,0"), 2, 0)
+        main.AddToGrid(b, 0, 2)
+        main.AddToGrid(StampCheckbox(context, 0, 0, 0, true), 5, 5)
+    
+        main.Render(context);
+    
+        CurrentPage = main;
+        */
 }
