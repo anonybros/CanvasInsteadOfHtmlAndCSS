@@ -317,6 +317,7 @@ var CursorDisplay = true;
 // need to add padding 
 // style button like a button
 // create columns and rows of any size
+// avoid duplicates of drawing /handling functions - so much duplicated codes
 
 $(function () {
     $canvas = $('#main');
