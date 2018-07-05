@@ -105,9 +105,9 @@ class CheckBox implements Renderable {
         this.context.DrawBox(this.x, this.y, this.width, this.height);
         if (this.checked) {
             this.context.DrawCheckMark(
-                this.x + (this.width / 2 * 0.05), this.y +this.width / 2 - (this.width / 2 * 0.05),
-                this.x + this.width / 2, this.y + this.width / 2 + (this.width / 2 * 0.9),
-                this.x + this.width - (this.width / 2 * 0.05), this.y + (this.width / 2 * 0.05)
+                this.x + (this.width / 2 * 0.05), this.y + this.height / 2 - (this.height / 2 * 0.05),
+                this.x + this.width / 2, this.y + this.height / 2 + (this.height / 2 * 0.9),
+                this.x + this.width - (this.width / 2 * 0.05), this.y + (this.height / 2 * 0.05)
             );
         }
     }
@@ -400,10 +400,9 @@ class RowDefinition extends Definition {
 }
 
 class Cell {
-    item: Renderable;
-    padding: Padding;
-    constructor(item: Renderable, padding: Padding)
-    {
+    item?: Renderable;
+    padding?: Padding;
+    constructor(item?: Renderable, padding?: Padding) {
         this.item = item;
         this.padding = padding;
     }
@@ -430,25 +429,54 @@ class GridLayoutManager implements Renderable {
         this.cells = cells;
 
         var PrecomputedRowHeights = new Array<number>();
+        PrecomputedRowHeights.push(0);
         var PrecomputedColumnWidths = new Array<number>();
+        PrecomputedColumnWidths.push(0);
 
-        rows.reduce(function(a,b,i) { return PrecomputedRowHeights[i] = a+b.size * height; }, 0);
-        columns.reduce(function(a,b,i) { return PrecomputedColumnWidths[i] = a+b.size * width; }, 0);
+        rows.forEach(element => {
+            PrecomputedRowHeights.push(element.size + PrecomputedRowHeights[PrecomputedRowHeights.length-1]);
+        });
 
-        if(this.cells.length != rows.length * columns.length)
-        {
+        columns.forEach(element => {
+            PrecomputedColumnWidths.push(element.size + PrecomputedColumnWidths[PrecomputedColumnWidths.length-1]);
+        });
+
+        PrecomputedRowHeights.pop();
+        PrecomputedColumnWidths.pop();
+
+        PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * height);
+        PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * width);
+
+        if (this.cells.length * this.cells[0].length != rows.length * columns.length) {
             throw new Error("invalid combination of definitions and cells");
         }
 
         cells.forEach((Row, RowNumber) => {
             Row.forEach((Cell, ColumnNumber) => {
-                var _Width = PrecomputedColumnWidths[ColumnNumber];
-                var _Height = PrecomputedRowHeights[RowNumber];
-                var padding = Cell.padding;
-                Cell.item.x = _Width + padding.left;
-                Cell.item.y = _Height + padding.top;
-                Cell.item.width = PrecomputedColumnWidths[ColumnNumber + 1] -  padding.right;
-                Cell.item.height = PrecomputedRowHeights[ColumnNumber + 1] -  padding.bottom;
+                if(Cell.item)
+                {
+                    if(Cell.padding)
+                    {
+                        var _Width = PrecomputedColumnWidths[ColumnNumber];
+                        var _Height = PrecomputedRowHeights[RowNumber];
+                        var padding = Cell.padding;
+                        Cell.item.x = _Width + padding.left;
+                        Cell.item.y = _Height + padding.top;
+                        Cell.item.width = PrecomputedColumnWidths[ColumnNumber + 1] - PrecomputedColumnWidths[ColumnNumber]  - padding.right;
+                        Cell.item.height = PrecomputedRowHeights[RowNumber + 1] - PrecomputedRowHeights[RowNumber] - padding.bottom;
+                        /*
+                        console.log("cell")
+                        console.log(PrecomputedColumnWidths)
+                        console.log(PrecomputedRowHeights)
+                        console.log("ColumnNumber " + ColumnNumber)
+                        console.log("RowNumber " + RowNumber)
+                        console.log("x " + Cell.item.x)
+                        console.log("y " + Cell.item.y)
+                        console.log("width " + Cell.item.width)
+                        console.log("height " + Cell.item.height)
+                        */
+                    }
+                }
             });
         });
     }
@@ -457,7 +485,11 @@ class GridLayoutManager implements Renderable {
         this.Clear();
         this.cells.forEach((row) => {
             row.forEach(cell => {
-                cell.item.Render();
+                if(cell.item)
+                {
+                    cell.item.Render();
+                    //console.log("rendering");
+                }
             });
         });
     }
@@ -469,7 +501,10 @@ class GridLayoutManager implements Renderable {
     HandleClick(x: number, y: number) {
         this.cells.forEach((row) => {
             row.forEach(cell => {
-                cell.item.HandleClick(x, y);
+                if(cell.item)
+                {
+                    cell.item.HandleClick(x, y);
+                }
             });
         });
     }
@@ -477,7 +512,10 @@ class GridLayoutManager implements Renderable {
     HandleKeyDown(key: string) {
         this.cells.forEach((row) => {
             row.forEach(cell => {
-                cell.item.HandleKeyDown(key);
+                if(cell.item)
+                {
+                    cell.item.HandleKeyDown(key);
+                }
             });
         });
     }
@@ -487,14 +525,57 @@ var canvas: HTMLCanvasElement;
 var context: CanvasRenderingContext2D;
 var CursorDisplay = true;
 
-
 // style button like a button
+// resizing and responsive break points
+// padding doesn't work
+// last cell is not displayed
 
 window.onload = () => {
     canvas = <HTMLCanvasElement>document.getElementById('main');
     context = <CanvasRenderingContext2D>canvas.getContext('2d');
+
+    var renderingContext = new RenderContext(context);
+
+    var rows = new Array<RowDefinition>(
+        new ColumnDefinition(500),
+        new ColumnDefinition(125),
+        new ColumnDefinition(125),
+        new ColumnDefinition(250)
+    );
+
+    var columns = new Array<ColumnDefinition>(
+        new ColumnDefinition(125),
+        new ColumnDefinition(125),
+        new ColumnDefinition(250),
+        new ColumnDefinition(500)
+    );
+
+    var cells = new Array<Array<Cell>>(
+        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(), new Cell()),
+        new Array(new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(new CheckBox(renderingContext), new Padding(5,50,15,5)), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0))),
+        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(), new Cell()),
+        new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)))
+    );
+
+
+    var main = new GridLayoutManager(renderingContext, 0, 0, canvas.width, canvas.height, rows, columns, cells);
+    main.Render();
+
+    var CurrentPage = main;
+
+    document.onkeydown = (e) => {
+        e.preventDefault();
+        CurrentPage.HandleKeyDown(e.key);
+        CurrentPage.Render();
+    }
+
+    canvas.onclick = (e) => {
+        CurrentPage.HandleClick(e.pageX, e.pageY);
+        CurrentPage.Render();
+    }
+
+
     /*
-        var CurrentPage = null;
     
         var main = new GridLayoutManager(context, canvas, 5, 5);
         var page2 = new GridLayoutManager(context, canvas, 1, 1);
@@ -503,15 +584,6 @@ window.onload = () => {
     
         page2.AddToGrid(t, 0, 0);
     
-        document.onkeydown = (e) => {
-            e.preventDefault();
-            CurrentPage.HandleKeyDown(e.key);
-        }
-    
-        canvas.onclick = (e) => {
-            CurrentPage.HandleClick(e.pageX, e.pageY);
-    
-        }
     
         setInterval(function () {
             CursorDisplay = !CursorDisplay;
