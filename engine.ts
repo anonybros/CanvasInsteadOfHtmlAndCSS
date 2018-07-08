@@ -1,6 +1,6 @@
 class RenderContext {
     context: CanvasRenderingContext2D
-    // these a the html5 spec defaults
+    // these are the html5 spec defaults
     FillStyle: string = "#000";
     Font: string = "10px sans-serif";
 
@@ -379,11 +379,11 @@ class Padding {
     left: number;
     right: number;
     bottom: number;
-    constructor(top: number, left: number, right: number, bottom: number) {
-        this.top = top / OutOf;
-        this.left = left / OutOf;
-        this.right = right / OutOf;
-        this.bottom = bottom / OutOf;
+    constructor(top?: number, left?: number, right?: number, bottom?: number) {
+        this.top = top || 0 / OutOf;
+        this.left = left || 0 / OutOf;
+        this.right = right || 0 / OutOf;
+        this.bottom = bottom || 0 / OutOf;
     }
 }
 
@@ -402,36 +402,36 @@ class RowDefinition extends Definition {
 
 class Cell {
     item?: Renderable;
-    padding?: Padding;
-    constructor(item?: Renderable, padding?: Padding) {
+    padding: Padding;
+    constructor(padding: Padding, item?: Renderable) {
         this.item = item;
         this.padding = padding;
     }
 }
 
-class GridLayoutManager implements Renderable {
+class GridLayoutManager {
     private context: RenderContext;
-    x: number;
-    y: number;
     height: number;
     width: number;
     rows: Array<RowDefinition>;
     columns: Array<ColumnDefinition>;
     cells: Array<Array<Cell>>;
 
-    constructor(context: RenderContext, x: number, y: number, width: number, height: number, rows: Array<RowDefinition>, columns: Array<ColumnDefinition>, cells: Array<Array<Cell>>) {
+    constructor(context: RenderContext, width: number, height: number, Page : PageDefinition) {
         this.context = context;
-        this.x = x;
-        this.y = y;
         this.width = width;
         this.height = height;
-        this.rows = rows;
-        this.columns = columns;
-        this.cells = cells;
-        this.CalculatePositions();
+        this.rows = Page.rows;
+        this.columns = Page.columns;
+        this.cells = Page.cells;
+        this.CalculatePositionsNo();
     }
 
-    CalculatePositions() {
+    CalculatePositionsNo() {
+        this.CalculatePositions(this.width, this.height);
+    }
+
+    CalculatePositions(width: number, height: number) {
         var PrecomputedRowHeights = new Array<number>();
         PrecomputedRowHeights.push(0);
         var PrecomputedColumnWidths = new Array<number>();
@@ -499,7 +499,7 @@ class GridLayoutManager implements Renderable {
     }
 
     Clear() {
-        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
+        this.context.ClearWithinBox(0, 0, this.width, this.height);
     }
 
     HandleClick(x: number, y: number) {
@@ -520,6 +520,32 @@ class GridLayoutManager implements Renderable {
                 }
             });
         });
+    }
+}
+
+class PagesHandler {
+    pages: { [id: string]: PageDefinition; } = {}
+    CurrentPage?: PageDefinition;
+
+    AddPage(name: string, page: PageDefinition)
+    {
+        this.pages[name] = page;
+    }
+
+    SetPage(name : string)
+    {
+        this.CurrentPage = this.pages[name];
+    }
+} 
+
+class BreakPointDefinition {
+    rows: Array<RowDefinition>;
+    columns: Array<ColumnDefinition>;
+    cells: Array<Array<Cell>>;
+    constructor (rows: Array<RowDefinition>, columns: Array<ColumnDefinition>, cells: Array<Array<Cell>>) {
+        this.rows = rows;
+        this.columns = columns;
+        this.cells = cells;
     }
 }
 
@@ -550,14 +576,36 @@ window.onload = () => {
         new ColumnDefinition(250)
     );
 
-    var cells = new Array<Array<Cell>>(
-        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
-        new Array(new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(50, 50, 50, 50)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0))),
-        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
-        new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)))
-    );
+    function StampCell(object?: Renderable, top?: number, left?: number, right?: number, bottom?: number) {
+        return new Cell(new Padding(top, left, right, bottom), object);
+    }
 
-    var main = new GridLayoutManager(renderingContext, 0, 0, canvas.width, canvas.height, rows, columns, cells);
+    function CreateArrayWithValues(length: number) {
+        var start = 0;
+        var result = [];
+        while (start < length) {
+            result.push(start);
+            start++;
+        }
+        return result;
+    }
+
+    var cells = CreateArrayWithValues(rows.length).map(element => {
+        return CreateArrayWithValues(columns.length).map(element => {
+            return StampCell();
+        });
+    });
+
+    //console.log(cells);
+    /*
+        var cells = new Array<Array<Cell>>(
+            new Array(StampCell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
+            new Array(new Cell(new Padding()), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(50, 50, 50, 50)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0))),
+            new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
+            new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)))
+        );
+    */
+    var main = new GridLayoutManager(renderingContext, canvas.width, canvas.height, new  rows, columns, cells);
 
     var CurrentPage = main;
 
@@ -572,8 +620,7 @@ window.onload = () => {
         CurrentPage.Render();
     }
 
-    function HandleResize()
-    {
+    function HandleResize() {
         var NewHeight = window.innerHeight;
         var NewWidth = window.innerWidth;
 
@@ -584,10 +631,10 @@ window.onload = () => {
         CurrentPage.CalculatePositions();
         CurrentPage.Render();
     }
-    
+
     window.addEventListener('resize', function (event) {
         HandleResize();
     });
-    
+
     HandleResize();
 }
