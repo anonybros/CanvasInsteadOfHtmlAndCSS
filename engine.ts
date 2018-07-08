@@ -428,28 +428,31 @@ class GridLayoutManager implements Renderable {
         this.rows = rows;
         this.columns = columns;
         this.cells = cells;
+        this.CalculatePositions();
+    }
 
+    CalculatePositions() {
         var PrecomputedRowHeights = new Array<number>();
         PrecomputedRowHeights.push(0);
         var PrecomputedColumnWidths = new Array<number>();
         PrecomputedColumnWidths.push(0);
 
-        rows.forEach(element => {
+        this.rows.forEach(element => {
             PrecomputedRowHeights.push(element.size + PrecomputedRowHeights[PrecomputedRowHeights.length - 1]);
         });
 
-        columns.forEach(element => {
+        this.columns.forEach(element => {
             PrecomputedColumnWidths.push(element.size + PrecomputedColumnWidths[PrecomputedColumnWidths.length - 1]);
         });
 
-        PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * height);
-        PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * width);
+        PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * this.height);
+        PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * this.width);
 
-        if (this.cells.length * this.cells[0].length != rows.length * columns.length) {
+        if (this.cells.length * this.cells[0].length != this.rows.length * this.columns.length) {
             throw new Error("invalid combination of definitions and cells");
         }
 
-        cells.forEach((Row, RowNumber) => {
+        this.cells.forEach((Row, RowNumber) => {
             Row.forEach((Cell, ColumnNumber) => {
                 if (Cell.item) {
                     if (Cell.padding) {
@@ -460,7 +463,7 @@ class GridLayoutManager implements Renderable {
                         Cell.item.y = _Height + (padding.top * this.height);
                         Cell.item.width = PrecomputedColumnWidths[ColumnNumber + 1] - Cell.item.x - (padding.right * this.width);
                         Cell.item.height = PrecomputedRowHeights[RowNumber + 1] - Cell.item.y - (padding.bottom * this.height);
-                        ///*
+                        /*
                         if (ColumnNumber == 1 && RowNumber == 1) {
                             console.log("Pay attention to this one");
                         }
@@ -477,7 +480,7 @@ class GridLayoutManager implements Renderable {
                         console.log("padding.bottom " + padding.bottom * this.height)
                         console.log("padding.left " + padding.left * this.width)
                         console.log("padding.top " + padding.top * this.height)
-                        //*/
+                        */
                     }
                 }
             });
@@ -525,7 +528,7 @@ var context: CanvasRenderingContext2D;
 var CursorDisplay = true;
 
 // style button like a button
-// resizing and responsive break points
+// responsive break points
 
 window.onload = () => {
     canvas = <HTMLCanvasElement>document.getElementById('main');
@@ -534,10 +537,10 @@ window.onload = () => {
     var renderingContext = new RenderContext(context);
 
     var rows = new Array<RowDefinition>(
+        new ColumnDefinition(500),
         new ColumnDefinition(250),
-        new ColumnDefinition(250),
-        new ColumnDefinition(250),
-        new ColumnDefinition(250)
+        new ColumnDefinition(125),
+        new ColumnDefinition(125)
     );
 
     var columns = new Array<ColumnDefinition>(
@@ -554,9 +557,7 @@ window.onload = () => {
         new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)))
     );
 
-
     var main = new GridLayoutManager(renderingContext, 0, 0, canvas.width, canvas.height, rows, columns, cells);
-    main.Render();
 
     var CurrentPage = main;
 
@@ -571,7 +572,22 @@ window.onload = () => {
         CurrentPage.Render();
     }
 
+    function HandleResize()
+    {
+        var NewHeight = window.innerHeight;
+        var NewWidth = window.innerWidth;
+
+        canvas.height = NewHeight;
+        canvas.width = NewWidth;
+        CurrentPage.height = NewHeight;
+        CurrentPage.width = NewWidth;
+        CurrentPage.CalculatePositions();
+        CurrentPage.Render();
+    }
+    
     window.addEventListener('resize', function (event) {
-        //console.log("resize");
+        HandleResize();
     });
+    
+    HandleResize();
 }
