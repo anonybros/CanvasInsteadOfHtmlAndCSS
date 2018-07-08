@@ -72,93 +72,47 @@ class RenderContext {
     }
 }
 
-interface Renderable {
-    Render(): void;
-    Clear(): void;
-    HandleClick(x: number, y: number): void;
-    HandleKeyDown(x: string): void;
-    x: number;
-    y: number;
-    height: number;
-    width: number;
+interface Control {
+    Render(x: number, y: number, height: number, width: number, context: RenderContext): void;
+    Clear(x: number, y: number, height: number, width: number, context: RenderContext): void;
+    HandleClick(x: number, y: number, xStart: number, yStart: number, height: number, width: number, context: RenderContext) : void
+    HandleKeyDown(key: string,  x: number, y: number, height: number, width: number, context: RenderContext) : void
 }
 
-class CheckBox implements Renderable {
-    private context: RenderContext;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+class CheckBox implements Control {
     checked: boolean;
 
-    constructor(context: RenderContext, x: number = 0, y: number = 0, width: number = 0, height: number = 0, checked: boolean = false) {
-        this.context = context;
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
+    constructor(checked: boolean = false) {
         this.checked = checked;
     }
 
-    Render() {
-        this.Clear();
-        this.context.DrawBox(this.x, this.y, this.width, this.height);
+    Render(x: number, y: number, height: number, width: number, context: RenderContext) {
+        this.Clear(x, y, height, width, context);
+        context.DrawBox(x, y, width, height);
         if (this.checked) {
-            this.context.DrawCheckMark(
-                this.x + (this.width / 2 * 0.05), this.y + this.height / 2 - (this.height / 2 * 0.05),
-                this.x + this.width / 2, this.y + this.height / 2 + (this.height / 2 * 0.9),
-                this.x + this.width - (this.width / 2 * 0.05), this.y + (this.height / 2 * 0.05)
+            context.DrawCheckMark(
+                x + (width / 2 * 0.05), y + height / 2 - (height / 2 * 0.05),
+                x + width / 2, y + height / 2 + (height / 2 * 0.9),
+                x + width - (width / 2 * 0.05), y + (height / 2 * 0.05)
             );
         }
     }
 
-    Clear() {
-        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
+    Clear(x: number, y: number, height: number, width: number, context: RenderContext) {
+        context.ClearWithinBox(x, y, width, height);
     }
 
-    HandleClick(x: number, y: number) {
-        if (this.context.WithinBox(x, y, this.x, this.y, this.width, this.height)) {
+    HandleClick(x: number, y: number, xStart: number, yStart: number, height: number, width: number, context: RenderContext) {
+        if (context.WithinBox(x, y, xStart, yStart, width, height)) {
             this.checked = !this.checked;
         }
     }
 
-    HandleKeyDown(x: string) {
+    HandleKeyDown(key: string, x: number, y: number, height: number, width: number, context: RenderContext) {
     }
 }
 
-
-class Cursor implements Renderable {
-    private context: RenderContext;
-    x: number;
-    y: number;
-    height: number;
-    width: number;
-
-    constructor(context: RenderContext, x: number, y: number, height: number) {
-        this.context = context;
-        this.x = x;
-        this.y = y;
-        this.width = 1;
-        this.height = height;
-    }
-
-    Render() {
-        this.Clear();
-        this.context.DrawBox(this.x, this.y, this.width, this.height);
-    }
-
-    Clear() {
-        this.context.ClearWithinBox(this.x, this.y, this.width, this.height);
-    }
-
-    HandleClick(x: number, y: number) {
-    }
-
-    HandleKeyDown(x: string) {
-    }
-}
-
-class TextBox implements Renderable {
+class TextBox implements Control {
     private context: RenderContext;
     x: number;
     y: number;
@@ -295,7 +249,7 @@ class TextBox implements Renderable {
     }
 }
 
-class Button implements Renderable {
+class Button implements Control {
     private context: RenderContext;
     x: number;
     y: number;
@@ -337,7 +291,7 @@ class Button implements Renderable {
     }
 }
 
-class TextLiteral implements Renderable {
+class TextLiteral implements Control {
     private context: RenderContext;
     x: number;
     y: number;
@@ -400,35 +354,137 @@ class ColumnDefinition extends Definition {
 class RowDefinition extends Definition {
 }
 
-class Cell {
-    item?: Renderable;
-    padding: Padding;
-    constructor(padding: Padding, item?: Renderable) {
-        this.item = item;
-        this.padding = padding;
+class Engine {
+    context: RenderContext;
+    controls: [Control];
+    pages: [Page];
+    CurrentPage?: Page;
+    //width
+    //height
+    constructor(controls: [Control], pages: [Page], context: CanvasRenderingContext2D) {
+        this.controls = controls;
+        this.pages = pages;
+        this.context = new RenderContext(context);
+    }
+
+    ChangePage(name: string) {
+        if (this.CurrentPage) {
+            this.CurrentPage.Clear();
+        }
+        this.CurrentPage = this.pages.filter(item => item.name === name)[0];
+    }
+
+    HandleResize() {
+        var NewHeight = window.innerHeight;
+        var NewWidth = window.innerWidth;
+
+        canvas.height = NewHeight;
+        canvas.width = NewWidth;
+        if (this.CurrentPage) {
+            this.CurrentPage.HandleResize(NewWidth, NewWidth);
+        }
+    }
+
+    HandleClick(x: number, y: number) {
+        if (this.CurrentPage) {
+            this.CurrentPage.HandleClick(x, y);
+        }
+    }
+
+    HandleKeyDown(key: string) {
+        if (this.CurrentPage) {
+            this.CurrentPage.HandleKeyDown(key);
+        }
+    }
+
+    Render() {
+        if (this.CurrentPage) {
+            this.CurrentPage.Render();
+        }
+    }
+
+    Clear() {
+        if (this.CurrentPage) {
+            this.CurrentPage.Clear();
+        }
     }
 }
 
-class GridLayoutManager {
-    private context: RenderContext;
-    height: number;
-    width: number;
-    rows: Array<RowDefinition>;
-    columns: Array<ColumnDefinition>;
-    cells: Array<Array<Cell>>;
+class Page {
 
-    constructor(context: RenderContext, width: number, height: number, Page : PageDefinition) {
-        this.context = context;
-        this.width = width;
-        this.height = height;
-        this.rows = Page.rows;
-        this.columns = Page.columns;
-        this.cells = Page.cells;
-        this.CalculatePositionsNo();
+    name: string;
+    layout: [Layout];
+    BreakPoints: [number];
+    CurrentLayout?: Layout;
+
+    constructor(name: string, layout: [Layout], BreakPoints: [number])
+    {
+        this.name = name;
+        this.layout = layout;
+        this.BreakPoints = BreakPoints;
     }
 
-    CalculatePositionsNo() {
-        this.CalculatePositions(this.width, this.height);
+    HandleClick(x: number, y: number) {
+        if (this.CurrentLayout) {
+            this.CurrentLayout.HandleClick(x, y);
+        }
+    }
+
+    HandleKeyDown(key: string) {
+        if (this.CurrentLayout) {
+            this.CurrentLayout.HandleKeyDown(key);
+        }
+    }
+
+    HandleResize(width: number, height: number) {
+
+        for (let index = 0; index < this.BreakPoints.length; index++) {
+            const element = this.BreakPoints[index];
+            var next;
+            if (index + 1 > this.BreakPoints.length) {
+                next = Number.MAX_VALUE;
+            }
+            else {
+                next = this.BreakPoints[index + 1];
+            }
+
+            if (width > element && width < next) {
+                this.CurrentLayout = this.layout[index];
+                break;
+            }
+        }
+
+        if (this.CurrentLayout) {
+            this.CurrentLayout.CalculatePositions(width, height)
+            this.CurrentLayout.Render()
+        }
+    }
+
+    Render() {
+        if (this.CurrentLayout) {
+            this.CurrentLayout.Render()
+        }
+    }
+
+    Clear() {
+        if (this.CurrentLayout) {
+            this.CurrentLayout.Clear()
+        }
+    }
+}
+
+class Layout {
+    rows: Array<RowDefinition>;
+    columns: Array<ColumnDefinition>;
+    cells: Array<Cell>;
+    ControlPositions: [ControlPosition]
+    
+    constructor(rows: Array<RowDefinition>, columns: Array<ColumnDefinition>, cells: Array<Cell>, ControlPositions: [ControlPosition])
+    {
+        this.rows = rows;
+        this.columns = columns;
+        this.cells = cells;
+        this.ControlPositions = ControlPositions;
     }
 
     CalculatePositions(width: number, height: number) {
@@ -445,8 +501,8 @@ class GridLayoutManager {
             PrecomputedColumnWidths.push(element.size + PrecomputedColumnWidths[PrecomputedColumnWidths.length - 1]);
         });
 
-        PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * this.height);
-        PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * this.width);
+        PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * height);
+        PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * width);
 
         if (this.cells.length * this.cells[0].length != this.rows.length * this.columns.length) {
             throw new Error("invalid combination of definitions and cells");
@@ -523,29 +579,39 @@ class GridLayoutManager {
     }
 }
 
-class PagesHandler {
-    pages: { [id: string]: PageDefinition; } = {}
-    CurrentPage?: PageDefinition;
-
-    AddPage(name: string, page: PageDefinition)
+class Cell {
+    control: Control;
+    padding: Padding;
+    position: GridPosition;
+    constructor(control: Control, padding: Padding, position: GridPosition)
     {
-        this.pages[name] = page;
+        this.control = control;
+        this.padding = padding;
+        this.position = position;
     }
+}
 
-    SetPage(name : string)
+class GridPosition {
+    row: number;
+    column: number;
+    constructor(row: number, column: number)
     {
-        this.CurrentPage = this.pages[name];
+        this.row = row;
+        this.column = column;
     }
-} 
+}
 
-class BreakPointDefinition {
-    rows: Array<RowDefinition>;
-    columns: Array<ColumnDefinition>;
-    cells: Array<Array<Cell>>;
-    constructor (rows: Array<RowDefinition>, columns: Array<ColumnDefinition>, cells: Array<Array<Cell>>) {
-        this.rows = rows;
-        this.columns = columns;
-        this.cells = cells;
+class ControlPosition {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    constructor(x: number, y: number, width: number, height: number)
+    {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
     }
 }
 
@@ -605,7 +671,7 @@ window.onload = () => {
             new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)))
         );
     */
-    var main = new GridLayoutManager(renderingContext, canvas.width, canvas.height, new  rows, columns, cells);
+    var main = new GridLayoutManager(renderingContext, canvas.width, canvas.height, new rows, columns, cells);
 
     var CurrentPage = main;
 
