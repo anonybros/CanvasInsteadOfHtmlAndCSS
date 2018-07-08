@@ -372,6 +372,7 @@ class TextLiteral implements Renderable {
     }
 }
 
+const OutOf = 1000;
 
 class Padding {
     top: number;
@@ -379,17 +380,17 @@ class Padding {
     right: number;
     bottom: number;
     constructor(top: number, left: number, right: number, bottom: number) {
-        this.top = top / 1000;
-        this.left = left / 1000;
-        this.right = right / 1000;
-        this.bottom = bottom / 1000;
+        this.top = top / OutOf;
+        this.left = left / OutOf;
+        this.right = right / OutOf;
+        this.bottom = bottom / OutOf;
     }
 }
 
 class Definition {
     size: number;
     constructor(size: number) {
-        this.size = size / 1000;
+        this.size = size / OutOf;
     }
 }
 
@@ -434,15 +435,12 @@ class GridLayoutManager implements Renderable {
         PrecomputedColumnWidths.push(0);
 
         rows.forEach(element => {
-            PrecomputedRowHeights.push(element.size + PrecomputedRowHeights[PrecomputedRowHeights.length-1]);
+            PrecomputedRowHeights.push(element.size + PrecomputedRowHeights[PrecomputedRowHeights.length - 1]);
         });
 
         columns.forEach(element => {
-            PrecomputedColumnWidths.push(element.size + PrecomputedColumnWidths[PrecomputedColumnWidths.length-1]);
+            PrecomputedColumnWidths.push(element.size + PrecomputedColumnWidths[PrecomputedColumnWidths.length - 1]);
         });
-
-        PrecomputedRowHeights.pop();
-        PrecomputedColumnWidths.pop();
 
         PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * height);
         PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * width);
@@ -453,18 +451,19 @@ class GridLayoutManager implements Renderable {
 
         cells.forEach((Row, RowNumber) => {
             Row.forEach((Cell, ColumnNumber) => {
-                if(Cell.item)
-                {
-                    if(Cell.padding)
-                    {
+                if (Cell.item) {
+                    if (Cell.padding) {
                         var _Width = PrecomputedColumnWidths[ColumnNumber];
                         var _Height = PrecomputedRowHeights[RowNumber];
                         var padding = Cell.padding;
-                        Cell.item.x = _Width + padding.left;
-                        Cell.item.y = _Height + padding.top;
-                        Cell.item.width = PrecomputedColumnWidths[ColumnNumber + 1] - PrecomputedColumnWidths[ColumnNumber]  - padding.right;
-                        Cell.item.height = PrecomputedRowHeights[RowNumber + 1] - PrecomputedRowHeights[RowNumber] - padding.bottom;
-                        /*
+                        Cell.item.x = _Width + (padding.left * this.width);
+                        Cell.item.y = _Height + (padding.top * this.height);
+                        Cell.item.width = PrecomputedColumnWidths[ColumnNumber + 1] - Cell.item.x - (padding.right * this.width);
+                        Cell.item.height = PrecomputedRowHeights[RowNumber + 1] - Cell.item.y - (padding.bottom * this.height);
+                        ///*
+                        if (ColumnNumber == 1 && RowNumber == 1) {
+                            console.log("Pay attention to this one");
+                        }
                         console.log("cell")
                         console.log(PrecomputedColumnWidths)
                         console.log(PrecomputedRowHeights)
@@ -474,7 +473,11 @@ class GridLayoutManager implements Renderable {
                         console.log("y " + Cell.item.y)
                         console.log("width " + Cell.item.width)
                         console.log("height " + Cell.item.height)
-                        */
+                        console.log("padding.right " + padding.right * this.width)
+                        console.log("padding.bottom " + padding.bottom * this.height)
+                        console.log("padding.left " + padding.left * this.width)
+                        console.log("padding.top " + padding.top * this.height)
+                        //*/
                     }
                 }
             });
@@ -483,12 +486,10 @@ class GridLayoutManager implements Renderable {
 
     Render() {
         this.Clear();
-        this.cells.forEach((row) => {
-            row.forEach(cell => {
-                if(cell.item)
-                {
+        this.cells.forEach((row, RowNumber) => {
+            row.forEach((cell, ColumnNumber) => {
+                if (cell.item) {
                     cell.item.Render();
-                    //console.log("rendering");
                 }
             });
         });
@@ -501,8 +502,7 @@ class GridLayoutManager implements Renderable {
     HandleClick(x: number, y: number) {
         this.cells.forEach((row) => {
             row.forEach(cell => {
-                if(cell.item)
-                {
+                if (cell.item) {
                     cell.item.HandleClick(x, y);
                 }
             });
@@ -512,8 +512,7 @@ class GridLayoutManager implements Renderable {
     HandleKeyDown(key: string) {
         this.cells.forEach((row) => {
             row.forEach(cell => {
-                if(cell.item)
-                {
+                if (cell.item) {
                     cell.item.HandleKeyDown(key);
                 }
             });
@@ -527,8 +526,6 @@ var CursorDisplay = true;
 
 // style button like a button
 // resizing and responsive break points
-// padding doesn't work
-// last cell is not displayed
 
 window.onload = () => {
     canvas = <HTMLCanvasElement>document.getElementById('main');
@@ -537,24 +534,24 @@ window.onload = () => {
     var renderingContext = new RenderContext(context);
 
     var rows = new Array<RowDefinition>(
-        new ColumnDefinition(500),
-        new ColumnDefinition(125),
-        new ColumnDefinition(125),
+        new ColumnDefinition(250),
+        new ColumnDefinition(250),
+        new ColumnDefinition(250),
         new ColumnDefinition(250)
     );
 
     var columns = new Array<ColumnDefinition>(
-        new ColumnDefinition(125),
-        new ColumnDefinition(125),
         new ColumnDefinition(250),
-        new ColumnDefinition(500)
+        new ColumnDefinition(250),
+        new ColumnDefinition(250),
+        new ColumnDefinition(250)
     );
 
     var cells = new Array<Array<Cell>>(
-        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(), new Cell()),
-        new Array(new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(new CheckBox(renderingContext), new Padding(5,50,15,5)), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0))),
-        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)), new Cell(), new Cell()),
-        new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0,0,0,0)))
+        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
+        new Array(new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(50, 50, 50, 50)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0))),
+        new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
+        new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)))
     );
 
 
@@ -574,35 +571,7 @@ window.onload = () => {
         CurrentPage.Render();
     }
 
-
-    /*
-    
-        var main = new GridLayoutManager(context, canvas, 5, 5);
-        var page2 = new GridLayoutManager(context, canvas, 1, 1);
-    
-        var t = StampText(context, 0, 0, 0, 0, "Page2")
-    
-        page2.AddToGrid(t, 0, 0);
-    
-    
-        setInterval(function () {
-            CursorDisplay = !CursorDisplay;
-        }, 500);
-    
-        var b = StampButton(context, 0, 0, 0, 0, "2", function () {
-            CurrentPage = page2;
-            main.Clear(context);
-            page2.Render(context);
-        });
-    
-        main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "0,0"), 0, 0)
-        main.AddToGrid(StampCheckbox(context, 0, 0, 0, false), 1, 1)
-        main.AddToGrid(StampTextBox(context, 0, 0, 0, 0, "2,0"), 2, 0)
-        main.AddToGrid(b, 0, 2)
-        main.AddToGrid(StampCheckbox(context, 0, 0, 0, true), 5, 5)
-    
-        main.Render(context);
-    
-        CurrentPage = main;
-        */
+    window.addEventListener('resize', function (event) {
+        //console.log("resize");
+    });
 }
