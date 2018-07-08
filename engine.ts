@@ -75,8 +75,8 @@ class RenderContext {
 interface Control {
     Render(x: number, y: number, height: number, width: number, context: RenderContext): void;
     Clear(x: number, y: number, height: number, width: number, context: RenderContext): void;
-    HandleClick(x: number, y: number, xStart: number, yStart: number, height: number, width: number, context: RenderContext) : void
-    HandleKeyDown(key: string,  x: number, y: number, height: number, width: number, context: RenderContext) : void
+    HandleClick(x: number, y: number, xStart: number, yStart: number, height: number, width: number, context: RenderContext): void
+    HandleKeyDown(key: string): void
 }
 
 class CheckBox implements Control {
@@ -108,7 +108,7 @@ class CheckBox implements Control {
         }
     }
 
-    HandleKeyDown(key: string, x: number, y: number, height: number, width: number, context: RenderContext) {
+    HandleKeyDown(key: string) {
     }
 }
 
@@ -144,20 +144,14 @@ class TextBox implements Control {
         //console.log(t);
         var width = this.context.MeasureText(t);
 
-        var c = new Cursor(
-            this.context,
-            (this.x + (this.width * 0.025)) + width - this.adjustment,
-            this.y + (this.height * 0.05),
-            this.height - (this.height * 0.1)
-        );
-
         if (this.AcceptInput && CursorDisplay) {
             //console.log("displaying at " + c.x + " " + c.y)
-            c.Render();
-        }
-        else {
-            //console.log("not displaying")
-            c.Clear();
+            this.context.DrawBox(
+                (this.x + (this.width * 0.025)) + width - this.adjustment,
+                this.y + (this.height * 0.05),
+                1,
+                this.height - (this.height * 0.1)
+            )
         }
 
         if (this.text) {
@@ -356,8 +350,8 @@ class RowDefinition extends Definition {
 
 class Engine {
     context: RenderContext;
-    controls: [Control];
-    pages: [Page];
+    controls: Control[];
+    pages: Page[];
     CurrentPage?: Page;
     //width
     //height
@@ -369,7 +363,7 @@ class Engine {
 
     ChangePage(name: string) {
         if (this.CurrentPage) {
-            this.CurrentPage.Clear();
+            this.CurrentPage.Clear(this.context);
         }
         this.CurrentPage = this.pages.filter(item => item.name === name)[0];
     }
@@ -383,29 +377,32 @@ class Engine {
         if (this.CurrentPage) {
             this.CurrentPage.HandleResize(NewWidth, NewWidth);
         }
+        this.Render();
     }
 
     HandleClick(x: number, y: number) {
         if (this.CurrentPage) {
             this.CurrentPage.HandleClick(x, y);
         }
+        this.Render();
     }
 
     HandleKeyDown(key: string) {
         if (this.CurrentPage) {
             this.CurrentPage.HandleKeyDown(key);
         }
+        this.Render();
     }
 
     Render() {
         if (this.CurrentPage) {
-            this.CurrentPage.Render();
+            this.CurrentPage.Render(this.context);
         }
     }
 
     Clear() {
         if (this.CurrentPage) {
-            this.CurrentPage.Clear();
+            this.CurrentPage.Clear(this.context);
         }
     }
 }
@@ -417,8 +414,7 @@ class Page {
     BreakPoints: [number];
     CurrentLayout?: Layout;
 
-    constructor(name: string, layout: [Layout], BreakPoints: [number])
-    {
+    constructor(name: string, layout: [Layout], BreakPoints: [number]) {
         this.name = name;
         this.layout = layout;
         this.BreakPoints = BreakPoints;
@@ -436,8 +432,7 @@ class Page {
         }
     }
 
-    HandleResize(width: number, height: number) {
-
+    HandleResize(width: number, height: number, context : RenderContext) {
         for (let index = 0; index < this.BreakPoints.length; index++) {
             const element = this.BreakPoints[index];
             var next;
@@ -456,19 +451,19 @@ class Page {
 
         if (this.CurrentLayout) {
             this.CurrentLayout.CalculatePositions(width, height)
-            this.CurrentLayout.Render()
+            this.CurrentLayout.Render(context)
         }
     }
 
-    Render() {
+    Render(context: RenderContext) {
         if (this.CurrentLayout) {
-            this.CurrentLayout.Render()
+            this.CurrentLayout.Render(context)
         }
     }
 
-    Clear() {
+    Clear(context: RenderContext) {
         if (this.CurrentLayout) {
-            this.CurrentLayout.Clear()
+            this.CurrentLayout.Clear(context, , )
         }
     }
 }
@@ -477,17 +472,19 @@ class Layout {
     rows: Array<RowDefinition>;
     columns: Array<ColumnDefinition>;
     cells: Array<Cell>;
-    ControlPositions: [ControlPosition]
-    
-    constructor(rows: Array<RowDefinition>, columns: Array<ColumnDefinition>, cells: Array<Cell>, ControlPositions: [ControlPosition])
-    {
+    width: number = 0;
+    height: number = 0;
+
+    constructor(rows: Array<RowDefinition>, columns: Array<ColumnDefinition>, cells: Array<Cell>, ControlPositions: [ControlPosition]) {
         this.rows = rows;
         this.columns = columns;
         this.cells = cells;
-        this.ControlPositions = ControlPositions;
     }
 
     CalculatePositions(width: number, height: number) {
+        this.width = width;
+        this.height = height;
+
         var PrecomputedRowHeights = new Array<number>();
         PrecomputedRowHeights.push(0);
         var PrecomputedColumnWidths = new Array<number>();
@@ -504,77 +501,43 @@ class Layout {
         PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * height);
         PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * width);
 
-        if (this.cells.length * this.cells[0].length != this.rows.length * this.columns.length) {
-            throw new Error("invalid combination of definitions and cells");
-        }
-
-        this.cells.forEach((Row, RowNumber) => {
-            Row.forEach((Cell, ColumnNumber) => {
-                if (Cell.item) {
-                    if (Cell.padding) {
-                        var _Width = PrecomputedColumnWidths[ColumnNumber];
-                        var _Height = PrecomputedRowHeights[RowNumber];
-                        var padding = Cell.padding;
-                        Cell.item.x = _Width + (padding.left * this.width);
-                        Cell.item.y = _Height + (padding.top * this.height);
-                        Cell.item.width = PrecomputedColumnWidths[ColumnNumber + 1] - Cell.item.x - (padding.right * this.width);
-                        Cell.item.height = PrecomputedRowHeights[RowNumber + 1] - Cell.item.y - (padding.bottom * this.height);
-                        /*
-                        if (ColumnNumber == 1 && RowNumber == 1) {
-                            console.log("Pay attention to this one");
-                        }
-                        console.log("cell")
-                        console.log(PrecomputedColumnWidths)
-                        console.log(PrecomputedRowHeights)
-                        console.log("ColumnNumber " + ColumnNumber)
-                        console.log("RowNumber " + RowNumber)
-                        console.log("x " + Cell.item.x)
-                        console.log("y " + Cell.item.y)
-                        console.log("width " + Cell.item.width)
-                        console.log("height " + Cell.item.height)
-                        console.log("padding.right " + padding.right * this.width)
-                        console.log("padding.bottom " + padding.bottom * this.height)
-                        console.log("padding.left " + padding.left * this.width)
-                        console.log("padding.top " + padding.top * this.height)
-                        */
-                    }
-                }
-            });
+        this.cells.forEach((Cell) => {
+            var gridPosition = Cell.gridPosition;
+            var _Width = PrecomputedColumnWidths[gridPosition.column];
+            var _Height = PrecomputedRowHeights[gridPosition.row];
+            var padding = Cell.padding;
+            var CellPosition = Cell.controlPosition;
+            CellPosition.x = _Width + (padding.left * width);
+            CellPosition.y = _Height + (padding.top * height);
+            CellPosition.width = PrecomputedColumnWidths[gridPosition.column + 1] - CellPosition.x - (padding.right * width);
+            CellPosition.height = PrecomputedRowHeights[gridPosition.row + 1] - CellPosition.y - (padding.bottom * height);
         });
     }
 
-    Render() {
-        this.Clear();
-        this.cells.forEach((row, RowNumber) => {
-            row.forEach((cell, ColumnNumber) => {
-                if (cell.item) {
-                    cell.item.Render();
-                }
-            });
+    Render(context: RenderContext) {
+        this.Clear(context, this.width, this.height);
+        this.cells.forEach((cell) => {
+            var position = cell.controlPosition;
+            var control = cell.control;
+            control.Render(position.x, position.y, position.height, position.width, context);
         });
     }
 
-    Clear() {
-        this.context.ClearWithinBox(0, 0, this.width, this.height);
+    Clear(context: RenderContext, width: number, height: number) {
+        context.ClearWithinBox(0, 0, width, height);
     }
 
     HandleClick(x: number, y: number) {
-        this.cells.forEach((row) => {
-            row.forEach(cell => {
-                if (cell.item) {
-                    cell.item.HandleClick(x, y);
-                }
-            });
+        this.cells.forEach((cell) => {
+            var position = cell.controlPosition;
+            var control = cell.control;
+            control.HandleClick(x, y, position.x, position.y, position.height, position.width, context);
         });
     }
 
     HandleKeyDown(key: string) {
-        this.cells.forEach((row) => {
-            row.forEach(cell => {
-                if (cell.item) {
-                    cell.item.HandleKeyDown(key);
-                }
-            });
+        this.cells.forEach((cell) => {
+                    cell.control.HandleKeyDown(key);
         });
     }
 }
@@ -582,20 +545,20 @@ class Layout {
 class Cell {
     control: Control;
     padding: Padding;
-    position: GridPosition;
-    constructor(control: Control, padding: Padding, position: GridPosition)
-    {
+    gridPosition: GridPosition;
+    controlPosition: ControlPosition;
+    constructor(control: Control, padding: Padding, gridPosition: GridPosition, controlPosition: ControlPosition) {
         this.control = control;
         this.padding = padding;
-        this.position = position;
+        this.gridPosition = gridPosition;
+        this.controlPosition = controlPosition;
     }
 }
 
 class GridPosition {
     row: number;
     column: number;
-    constructor(row: number, column: number)
-    {
+    constructor(row: number, column: number) {
         this.row = row;
         this.column = column;
     }
@@ -606,8 +569,7 @@ class ControlPosition {
     y: number;
     width: number;
     height: number;
-    constructor(x: number, y: number, width: number, height: number)
-    {
+    constructor(x: number, y: number, width: number, height: number) {
         this.x = x;
         this.y = y;
         this.width = width;
@@ -620,87 +582,28 @@ var context: CanvasRenderingContext2D;
 var CursorDisplay = true;
 
 // style button like a button
-// responsive break points
 
 window.onload = () => {
     canvas = <HTMLCanvasElement>document.getElementById('main');
     context = <CanvasRenderingContext2D>canvas.getContext('2d');
 
-    var renderingContext = new RenderContext(context);
+    var controls : Control[] = [];
+    var pages : Page[] = [];
 
-    var rows = new Array<RowDefinition>(
-        new ColumnDefinition(500),
-        new ColumnDefinition(250),
-        new ColumnDefinition(125),
-        new ColumnDefinition(125)
-    );
-
-    var columns = new Array<ColumnDefinition>(
-        new ColumnDefinition(250),
-        new ColumnDefinition(250),
-        new ColumnDefinition(250),
-        new ColumnDefinition(250)
-    );
-
-    function StampCell(object?: Renderable, top?: number, left?: number, right?: number, bottom?: number) {
-        return new Cell(new Padding(top, left, right, bottom), object);
-    }
-
-    function CreateArrayWithValues(length: number) {
-        var start = 0;
-        var result = [];
-        while (start < length) {
-            result.push(start);
-            start++;
-        }
-        return result;
-    }
-
-    var cells = CreateArrayWithValues(rows.length).map(element => {
-        return CreateArrayWithValues(columns.length).map(element => {
-            return StampCell();
-        });
-    });
-
-    //console.log(cells);
-    /*
-        var cells = new Array<Array<Cell>>(
-            new Array(StampCell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
-            new Array(new Cell(new Padding()), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(50, 50, 50, 50)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0))),
-            new Array(new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)), new Cell(), new Cell()),
-            new Array(new Cell(), new Cell(), new Cell(), new Cell(new CheckBox(renderingContext), new Padding(0, 0, 0, 0)))
-        );
-    */
-    var main = new GridLayoutManager(renderingContext, canvas.width, canvas.height, new rows, columns, cells);
-
-    var CurrentPage = main;
+    var engine = new Engine(controls, pages, context);
 
     document.onkeydown = (e) => {
         e.preventDefault();
-        CurrentPage.HandleKeyDown(e.key);
-        CurrentPage.Render();
+        engine.HandleKeyDown(e.key);
     }
 
     canvas.onclick = (e) => {
-        CurrentPage.HandleClick(e.pageX, e.pageY);
-        CurrentPage.Render();
-    }
-
-    function HandleResize() {
-        var NewHeight = window.innerHeight;
-        var NewWidth = window.innerWidth;
-
-        canvas.height = NewHeight;
-        canvas.width = NewWidth;
-        CurrentPage.height = NewHeight;
-        CurrentPage.width = NewWidth;
-        CurrentPage.CalculatePositions();
-        CurrentPage.Render();
+        engine.HandleClick(e.pageX, e.pageY);
     }
 
     window.addEventListener('resize', function (event) {
-        HandleResize();
+        engine.HandleResize();
     });
 
-    HandleResize();
+    engine.HandleResize();
 }
