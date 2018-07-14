@@ -1,0 +1,28 @@
+page name
+    controls name:textbox active:checkbox
+    600
+        0 name 0
+        0 active 0       
+    1500
+        0 0 0
+        0 name 0
+        0 active 0
+    *
+        0 0 0
+        0 name 0
+        0 active 0
+        0 0 0
+page name
+    controls name:textbox active:checkbox
+    0 600
+        0 name 0
+        0 active 0       
+    1500
+        0 0 0
+        0 name 0
+        0 active 0
+    *
+        0 0 0
+        0 name 0
+        0 active 0
+        0 0 0

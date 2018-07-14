@@ -1,0 +1,34 @@
+import os
+
+lines = open("pages.florg").readlines()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

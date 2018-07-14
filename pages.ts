@@ -1,0 +1,4 @@
+function GeneratePages() : Page[]
+{
+    return [];
+} 
