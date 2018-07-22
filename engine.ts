@@ -110,16 +110,7 @@ class ControlPosition {
         }
     }
 }
-/*
-function Compose(f1: Function, f2: Function)
-{
-    function inner(args: any)
-    {
-        return f1(f2(...args));
-    }
-    return inner;
-}
-*/
+
 function CalculatePositions(rows: RowDefinition[], columns: ColumnDefinition[], cells: CellLocationWithPadding[], width: number, height: number) {
     var PrecomputedRowHeights = new Array<number>();
     PrecomputedRowHeights.push(0);
@@ -255,7 +246,10 @@ class Engine {
     }
 }
 
+var rContext = new RenderContext()
+
 window.onload = () => {
+
     canvas = <HTMLCanvasElement>document.getElementById('main');
     context = <CanvasRenderingContext2D>canvas.getContext('2d');
 
