@@ -56,15 +56,15 @@ class TextBox implements Data {
         var width = position.width;
         var height = position.height;
 
-        if (rContext.MeasureText(this.text.substring(0, this.CursorPosition)) - this.adjustment <= x + (width * 0.025)) {
-            this.adjustment -= rContext.MeasureText(this.text[this.text.length - 1]);
+        if (rContext.MeasureTextWidth(this.text.substring(0, this.CursorPosition)) - this.adjustment <= x + (width * 0.025)) {
+            this.adjustment -= rContext.MeasureTextWidth(this.text[this.text.length - 1]);
             if (this.adjustment < 0) {
                 this.adjustment = 0;
             }
         }
 
-        if (rContext.MeasureText(this.text.substring(0, this.CursorPosition)) - this.adjustment >= width + x - (width * 0.025)) {
-            this.adjustment += rContext.MeasureText(this.text[this.text.length - 1]);
+        if (rContext.MeasureTextWidth(this.text.substring(0, this.CursorPosition)) - this.adjustment >= width + x - (width * 0.025)) {
+            this.adjustment += rContext.MeasureTextWidth(this.text[this.text.length - 1]);
         }
 
         rContext.DrawBox(x, y, width, height);
@@ -72,7 +72,7 @@ class TextBox implements Data {
 
         var t = this.text.substring(0, this.CursorPosition);
         //console.log(t);
-        var width = rContext.MeasureText(t);
+        var width = rContext.MeasureTextWidth(t);
 
         if (this.AcceptInput && CursorDisplay) {
             //console.log("displaying at " + c.x + " " + c.y)

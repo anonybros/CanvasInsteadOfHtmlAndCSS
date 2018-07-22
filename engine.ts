@@ -20,7 +20,7 @@ class RenderContext {
         context.closePath();
     }
 
-    MeasureText(text: string) {
+    MeasureTextWidth(text: string) {
         return context.measureText(text).width;
     }
 
@@ -29,11 +29,22 @@ class RenderContext {
     }
 
     DrawTextClipped(text: string, x: number, y: number, width: number, height: number) {
+        /*
+        console.log(text);
+        console.log(x);
+        console.log(y);
+        console.log(width);
+        console.log(height);
+        */
+       
         context.save();
         context.beginPath();
         context.rect(x, y, width, height);
+        context.stroke();
         context.clip();
-        context.fillText(text, x, y);
+        this.SetFont(height.toString() + "px sans-serif");
+        context.fillText(text, x, y + height);
+        this.ResetFont()
         context.restore();
     }
 
@@ -66,10 +77,10 @@ class Padding {
     right: number;
     bottom: number;
     constructor(top?: number, left?: number, right?: number, bottom?: number) {
-        this.top = top || 0 / OutOf;
-        this.left = left || 0 / OutOf;
-        this.right = right || 0 / OutOf;
-        this.bottom = bottom || 0 / OutOf;
+        this.top = (top || 0) / OutOf;
+        this.left = (left || 0) / OutOf;
+        this.right = (right || 0) / OutOf;
+        this.bottom = (bottom || 0) / OutOf;
     }
 }
 
@@ -101,6 +112,15 @@ class ControlPosition {
     y: number = 0;
     width: number = 0;
     height: number = 0;
+
+    NormalizeValues()
+    {
+        this.x = Math.ceil(this.x);
+        this.y = Math.ceil(this.y);
+        this.width = Math.ceil(this.width);
+        this.height = Math.ceil(this.height);
+    }
+
     WithinBox(x: number, y: number) {
         if (x >= this.x && x <= this.x + this.width) {
             if (y >= this.y && y <= this.y + this.height) {
@@ -112,6 +132,15 @@ class ControlPosition {
 }
 
 function CalculatePositions(rows: RowDefinition[], columns: ColumnDefinition[], cells: CellLocationWithPadding[], width: number, height: number) {
+    /*
+        console.log("in CalculatePositions")
+        console.log(rows)
+        console.log(columns)
+        console.log(cells)
+        console.log(width)
+        console.log(height)
+    */
+
     var PrecomputedRowHeights = new Array<number>();
     PrecomputedRowHeights.push(0);
     var PrecomputedColumnWidths = new Array<number>();
@@ -125,8 +154,11 @@ function CalculatePositions(rows: RowDefinition[], columns: ColumnDefinition[], 
         PrecomputedColumnWidths.push(element.size + PrecomputedColumnWidths[PrecomputedColumnWidths.length - 1]);
     });
 
-    PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * height);
-    PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * width);
+    PrecomputedRowHeights = PrecomputedRowHeights.map((i) => i * height).map((i) => Math.ceil(i));
+    PrecomputedColumnWidths = PrecomputedColumnWidths.map((i) => i * width).map((i) => Math.ceil(i));
+
+    //console.log(PrecomputedColumnWidths);
+    //console.log(PrecomputedRowHeights);
 
     var positions = new Array<ControlPosition>();
 
@@ -135,6 +167,7 @@ function CalculatePositions(rows: RowDefinition[], columns: ColumnDefinition[], 
         var _Width = PrecomputedColumnWidths[gridPosition.column];
         var _Height = PrecomputedRowHeights[gridPosition.row];
         var padding = Cell.padding;
+        //console.log(padding);
         var CellPosition = new ControlPosition();
         CellPosition.x = _Width + (padding.left * width);
         CellPosition.y = _Height + (padding.top * height);
@@ -142,6 +175,10 @@ function CalculatePositions(rows: RowDefinition[], columns: ColumnDefinition[], 
         CellPosition.height = PrecomputedRowHeights[gridPosition.row + 1] - CellPosition.y - (padding.bottom * height);
         positions.push(CellPosition);
     });
+
+    positions.map((i) => i.NormalizeValues())
+
+    //console.log(positions[0]);
     return positions;
 }
 
@@ -229,7 +266,7 @@ class Engine {
 
     private Render() {
         this.positions.forEach((element, index) => {
-                this.current[index].Render(element);
+            this.current[index].Render(element);
         });
     }
 
@@ -242,6 +279,7 @@ class Engine {
 
         var layout = DetermineLayout(this.CurrentPage, NewWidth);
         this.positions = CalculatePositions(layout.rows, layout.columns, layout.cells, NewWidth, NewHeight);
+        //console.log(this.positions);
         this.Render();
     }
 }
@@ -257,7 +295,7 @@ window.onload = () => {
 
     var engine = new Engine();
     engine.pages = pages;
-    engine.CurrentPage = pages[0];
+    engine.ChangePage("main");
 
     document.onkeydown = (e) => {
         e.preventDefault();

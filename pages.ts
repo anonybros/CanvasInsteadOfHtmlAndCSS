@@ -2,22 +2,15 @@ function GeneratePages(): Page[] {
     var page = new Page();
     page.BreakPoints = [0, 1500, 3000]
     page.controls = [new TextLiteral("This is a test")];
-    page.name = "main page";
+    page.name = "main";
 
     var cell = new CellLocationWithPadding();
-    //TODO: fix error in console
-    //TODO: determine how Page.controls are lined up with Layout.cells
     var gridpos = new GridPosition();
     gridpos.column = 1;
     gridpos.row = 1;
     cell.CellLocation = gridpos;
 
-    var padding = new Padding();
-    padding.bottom = 15;
-    padding.top = 10;
-    padding.left = 25;
-    padding.right = 5;
-    cell.padding = padding;
+    cell.padding = new Padding(10, 25, 5, 15);
 
     var f0to1500 = new Layout();
     f0to1500.rows = [new RowDefinition(333), new RowDefinition(333), new RowDefinition(333)]
