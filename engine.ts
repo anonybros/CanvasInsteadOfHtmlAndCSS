@@ -36,11 +36,11 @@ class RenderContext {
         console.log(width);
         console.log(height);
         */
-       
+
         context.save();
         context.beginPath();
         context.rect(x, y, width, height);
-        context.stroke();
+        //context.stroke();
         context.clip();
         this.SetFont(height.toString() + "px sans-serif");
         context.fillText(text, x, y + height);

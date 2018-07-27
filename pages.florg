@@ -1,28 +1,34 @@
 page name
     controls name:textbox active:checkbox
     600
-        0 name 0
-        0 active 0       
+               c(333) c(333) c(333)
+        r(500)        name
+        r(500)        active
     1500
-        0 0 0
-        0 name 0
-        0 active 0
+               c(333) c(333) c(333)
+        r(333) 
+        r(333)        name
+        r(333)        active
     *
-        0 0 0
-        0 name 0
-        0 active 0
-        0 0 0
-page name
+               c(333) c(333) c(333)
+        r(250) 
+        r(250)        name
+        r(250)        active
+        r(250)
+page name2
     controls name:textbox active:checkbox
-    0 600
-        0 name 0
-        0 active 0       
+    600
+               c(333) c(333) c(333)
+        r(250)        name
+        r(250)        active
     1500
-        0 0 0
-        0 name 0
-        0 active 0
+               c(333) c(333) c(333)
+        r(250) 
+        r(250)        name
+        r(250)        active
     *
-        0 0 0
-        0 name 0
-        0 active 0
-        0 0 0
+               c(333) c(333) c(333)
+        r(250) 
+        r(250)        name
+        r(250)        active
+        r(250)
