@@ -27,7 +27,9 @@ fs.readFile(filePathIn, { encoding: 'utf-8' }, function (err, data) {
                 pages.push({ name: pagename })
             }
             if (l.startsWith("controls")) {
-
+                var page = pages[pages.length - 1];
+                page.controls = [];
+                
             }
         });
 
