@@ -9,7 +9,7 @@ function GenId() {
     return "a" + count++;
 }
 
-var types = { "text": 0 };
+var types = { "text": 0, "checkbox": 1 };
 
 fs.readFile(filePathIn, { encoding: 'utf-8' }, function (err, data) {
     if (!err) {
@@ -17,10 +17,18 @@ fs.readFile(filePathIn, { encoding: 'utf-8' }, function (err, data) {
         var lines = data.split("\n");
 
         var result = "";
-        //var pages = [];
+
+        var pages = [];
 
         lines.forEach(line => {
             var l = line.trim();
+            if (l.startsWith("page")) {
+                var pagename = l.split(" ")[1]
+                pages.push({ name: pagename })
+            }
+            if (l.startsWith("controls")) {
+
+            }
         });
 
         var pages = [{
@@ -46,7 +54,7 @@ fs.readFile(filePathIn, { encoding: 'utf-8' }, function (err, data) {
 
         var pagesVar = GenId();
 
-        result += "var " + pagesVar + " = [];" 
+        result += "var " + pagesVar + " = [];"
 
         pages.forEach(page => {
             var pageVar = GenId();
@@ -111,14 +119,14 @@ fs.readFile(filePathIn, { encoding: 'utf-8' }, function (err, data) {
                     result += cellsVar + ".push(" + cellVar + ");";
                 });
 
-                result += layoutVar + ".cells = " + cellsVar  + ";";
+                result += layoutVar + ".cells = " + cellsVar + ";";
 
                 result += layoutsVar + ".push(" + layoutVar + ");";
 
             });
             result += pageVar + ".layout = " + layoutsVar + ";";
 
-            result += pagesVar + ".push("+ pageVar +");";
+            result += pagesVar + ".push(" + pageVar + ");";
         });
 
         result += "return " + pagesVar + ";";
